@@ -1,333 +1,446 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
-// ── Palette ────────────────────────────────────────────────────────────────────
-// bg:    #e2ded7  warm grey (clearly not white)
-// ink:   #1a1714  near-black
-// muted: #6b635a
-// gold:  #c4943d  richer, better contrast on grey
-// dark:  #0e0d0b  near-black sections
+const GOLD = "#d6a63f";
+const GOLD_BRIGHT = "#f4cf77";
+const INK = "#1a1714";
+const MUTED = "#5e564d";
 
 const platforms = [
   {
     name: "99acres",
+    displayName: "99acres",
     logo: "/99acres.png",
-    desc: "India's largest property portal — millions of verified owner listings across every major city.",
+    desc: "Massive verified inventory across India's major rental markets.",
   },
   {
     name: "NoBroker",
+    displayName: "NoBroker",
     logo: "/nobroker.png",
-    desc: "Zero brokerage, direct from owners. No middlemen, no hidden fees.",
+    desc: "Direct owner-first listings with zero brokerage friction.",
   },
   {
     name: "MagicBricks",
+    displayName: "MagicBricks",
     logo: "/magicbricks.png",
-    desc: "Premium listings with deep locality insights, photos, and owner contacts.",
+    desc: "High-quality listings with rich locality and amenity coverage.",
   },
 ];
 
 const steps = [
   {
     num: "01",
-    title: "You talk",
-    desc: "Describe your locality, budget, BHK, and preferences naturally — no forms, no filters.",
+    title: "Describe your ideal home",
+    desc: "Speak naturally about locality, budget, BHK, commute, and deal-breakers.",
   },
   {
     num: "02",
-    title: "We search",
-    desc: "Our system scans all three platforms simultaneously in real time.",
+    title: "Nest searches everything",
+    desc: "We scan every partner platform in parallel and normalize the results instantly.",
   },
   {
     num: "03",
-    title: "You choose",
-    desc: "Ranked shortlist matched to exactly what you described, with full locality intel.",
+    title: "Shortlist with confidence",
+    desc: "Get ranked homes with locality context so your final decision is faster and smarter.",
   },
 ];
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const },
+const profileExamples = [
+  {
+    headline: "Whitefield · 2BHK · ₹20k–₹35k",
+    chips: ["Near metro", "Lift", "Covered parking", "Family friendly"],
+    insight: "Great for tech professionals with quick ORR commute.",
   },
-};
+  {
+    headline: "HSR Layout · 1BHK · ₹18k–₹28k",
+    chips: ["Pet friendly", "Balcony", "Low noise", "Gym nearby"],
+    insight: "Popular with young couples and startup teams.",
+  },
+  {
+    headline: "Indiranagar · 3BHK · ₹45k–₹70k",
+    chips: ["Semi-furnished", "Power backup", "Near metro", "Parking"],
+    insight: "Best for premium rentals with walkable lifestyle access.",
+  },
+];
 
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.13 } },
-};
-
-// Inline bg style — reused on light sections
 const lightBg: React.CSSProperties = {
   backgroundColor: "#e2ded7",
   backgroundImage: [
-    // top-left warm glow
-    "radial-gradient(ellipse 70% 55% at 0% 0%, rgba(196,148,61,0.22) 0%, transparent 55%)",
-    // bottom-right warm glow
-    "radial-gradient(ellipse 60% 50% at 100% 100%, rgba(196,148,61,0.15) 0%, transparent 55%)",
-    // dot grid
-    "radial-gradient(rgba(26,23,20,0.13) 1.2px, transparent 1.2px)",
+    "radial-gradient(ellipse 75% 58% at 0% 0%, rgba(214,166,63,0.35) 0%, transparent 60%)",
+    "radial-gradient(ellipse 70% 55% at 100% 100%, rgba(244,207,119,0.22) 0%, transparent 58%)",
+    "radial-gradient(rgba(26,23,20,0.14) 1.2px, transparent 1.2px)",
   ].join(", "),
   backgroundSize: "100% 100%, 100% 100%, 24px 24px",
 };
 
 export default function Home() {
-  return (
-    <div className="min-h-screen text-[#1a1714]" style={lightBg}>
+  const shouldReduceMotion = useReducedMotion();
+  const [activeExample, setActiveExample] = useState(0);
 
-      {/* ── Nav ──────────────────────────────────────────── */}
+  useEffect(() => {
+    if (shouldReduceMotion) return;
+    const interval = window.setInterval(() => {
+      setActiveExample((current) => (current + 1) % profileExamples.length);
+    }, 3200);
+    return () => window.clearInterval(interval);
+  }, [shouldReduceMotion]);
+
+  const reveal = shouldReduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 24 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, amount: 0.35 },
+        transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+      };
+
+  return (
+    <div className="min-h-screen text-[17px] text-[#1a1714] md:text-[18px]" style={lightBg}>
       <header
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 border-b border-[rgba(26,23,20,0.1)] backdrop-blur-md"
-        style={{ backgroundColor: "rgba(226,222,215,0.92)" }}
+        className="fixed top-0 left-0 right-0 z-50 border-b px-5 py-4 backdrop-blur-xl md:px-8"
+        style={{
+          backgroundColor: "rgba(226,222,215,0.88)",
+          borderColor: "rgba(26,23,20,0.11)",
+        }}
       >
-        <span
-          style={{ fontFamily: "var(--font-display)" }}
-          className="font-bold text-lg tracking-tight text-[#1a1714]"
-        >
-          Nest
-        </span>
-        <Link
-          href="/call"
-          className="px-5 py-2.5 text-sm font-bold rounded-full transition-colors"
-          style={{
-            backgroundColor: "#c4943d",
-            color: "#1a1714",
-            boxShadow: "0 2px 12px -2px rgba(196,148,61,0.45)",
-          }}
-        >
-          Start your search →
-        </Link>
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
+          <Link
+            href="/#home"
+            style={{ fontFamily: "var(--font-display)" }}
+            className="text-xl font-bold tracking-tight transition-opacity hover:opacity-80 md:text-2xl"
+          >
+            Nest
+          </Link>
+
+          <nav className="hidden items-center gap-2 rounded-full border border-[rgba(26,23,20,0.13)] bg-[rgba(255,255,255,0.46)] p-1 md:flex">
+            <Link
+              href="/#home"
+              className="rounded-full px-4 py-2 text-sm font-bold uppercase tracking-[0.12em] text-[#1a1714] transition-colors hover:bg-[rgba(26,23,20,0.08)]"
+            >
+              Home
+            </Link>
+            <a
+              href="#partners"
+              className="rounded-full px-4 py-2 text-sm font-bold uppercase tracking-[0.12em] text-[#6b635a] transition-colors hover:bg-[rgba(26,23,20,0.08)] hover:text-[#1a1714]"
+            >
+              Partners
+            </a>
+            <a
+              href="#process"
+              className="rounded-full px-4 py-2 text-sm font-bold uppercase tracking-[0.12em] text-[#6b635a] transition-colors hover:bg-[rgba(26,23,20,0.08)] hover:text-[#1a1714]"
+            >
+              How it works
+            </a>
+          </nav>
+
+          <Link
+            href="/call"
+            className="rounded-full px-6 py-2.5 text-sm font-bold uppercase tracking-[0.12em] transition-transform hover:scale-[1.02]"
+            style={{
+              backgroundImage: `linear-gradient(120deg, ${GOLD} 0%, ${GOLD_BRIGHT} 100%)`,
+              color: INK,
+              boxShadow: "0 10px 28px -10px rgba(214,166,63,0.92)",
+            }}
+          >
+            Start your search
+          </Link>
+        </div>
       </header>
 
-      {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 pt-20">
+      <section
+        id="home"
+        className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-12 px-5 pt-28 pb-16 md:grid-cols-[1.15fr_0.85fr] md:px-8"
+      >
         <motion.div
-          initial="hidden"
-          animate="show"
-          variants={stagger}
-          className="max-w-4xl space-y-6"
+          initial={shouldReduceMotion ? undefined : { opacity: 0, y: 24 }}
+          animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={shouldReduceMotion ? undefined : { duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-7"
         >
-          {/* Brand mark in hero */}
-          <motion.div variants={fadeUp}>
-            <span
-              style={{ fontFamily: "var(--font-display)" }}
-              className="text-xs font-bold uppercase tracking-[0.32em] text-[#c4943d]"
-            >
-              Nest
-            </span>
-          </motion.div>
-
-          {/* Serif tagline */}
-          <motion.p
-            variants={fadeUp}
-            style={{ fontFamily: "var(--font-serif)" }}
-            className="italic text-[#1a1714] text-2xl md:text-3xl tracking-wide opacity-70"
+          <p
+            style={{ fontFamily: "var(--font-serif)", color: GOLD }}
+            className="text-2xl italic md:text-3xl"
           >
-            Find your perfect home
-          </motion.p>
+            Rental search, redesigned for speed.
+          </p>
 
-          {/* Main headline */}
-          <motion.h1
-            variants={fadeUp}
+          <h1
             style={{ fontFamily: "var(--font-display)" }}
-            className="text-6xl md:text-[90px] font-bold leading-[0.92] tracking-[-0.04em] text-[#1a1714]"
+            className="text-6xl leading-[0.92] tracking-[-0.04em] md:text-8xl"
           >
-            Tell us what
+            Speak once.
             <br />
-            you need.
-          </motion.h1>
+            Get your
+            <span className="block text-transparent" style={{ backgroundImage: `linear-gradient(120deg, ${GOLD} 0%, ${GOLD_BRIGHT} 100%)`, WebkitBackgroundClip: "text" }}>
+              perfect shortlist.
+            </span>
+          </h1>
 
-          {/* Body */}
-          <motion.p
-            variants={fadeUp}
-            className="max-w-lg mx-auto text-[#6b635a] text-lg leading-relaxed"
-          >
-            Describe your budget, location, and preferences in one conversation.
-            We search across platforms and return your best matches instantly.
-          </motion.p>
+          <p className="max-w-xl text-lg leading-relaxed text-[#5e564d] md:text-xl">
+            Tell Nest your budget, locality, BHK, and non-negotiables. We search every partner
+            platform instantly and return the best-fit homes with locality intelligence.
+          </p>
 
-          {/* CTA */}
-          <motion.div variants={fadeUp} className="pt-3">
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/call"
-              className="inline-flex items-center gap-2 px-9 py-4 text-sm font-bold rounded-full transition-colors"
+              className="inline-flex items-center rounded-full px-9 py-4 text-base font-bold tracking-wide transition-transform hover:scale-[1.02]"
               style={{
-                backgroundColor: "#c4943d",
-                color: "#1a1714",
-                boxShadow: "0 10px 36px -8px rgba(196,148,61,0.55)",
+                backgroundImage: `linear-gradient(120deg, ${GOLD} 0%, ${GOLD_BRIGHT} 100%)`,
+                color: INK,
+                boxShadow: "0 16px 34px -14px rgba(214,166,63,0.9)",
               }}
             >
-              Start talking →
+              Start talking
             </Link>
-          </motion.div>
+            <a
+              href="#partners"
+              className="inline-flex items-center rounded-full border px-9 py-4 text-base font-bold tracking-wide text-[#1a1714] transition-colors hover:bg-[rgba(26,23,20,0.05)]"
+              style={{ borderColor: "rgba(26,23,20,0.2)" }}
+            >
+              See all partner logos
+            </a>
+          </div>
         </motion.div>
 
-        {/* Scroll cue */}
         <motion.div
-          className="absolute bottom-10 flex flex-col items-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 0.6 }}
+          initial={shouldReduceMotion ? undefined : { opacity: 0, y: 24 }}
+          animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={shouldReduceMotion ? undefined : { duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="rounded-3xl border p-6 md:p-7"
+          style={{
+            borderColor: "rgba(26,23,20,0.14)",
+            backgroundColor: "rgba(255,255,255,0.58)",
+            boxShadow: "0 28px 56px -30px rgba(26,23,20,0.35)",
+          }}
         >
-          <motion.span
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-            className="text-[#c4943d] text-xs font-bold tracking-[0.24em] uppercase"
-          >
-            ↓
-          </motion.span>
-        </motion.div>
-      </section>
-
-      {/* ── Platform section — dark ───────────────────────── */}
-      <section style={{ backgroundColor: "#0e0d0b" }} className="py-28 px-8">
-        <div className="max-w-6xl mx-auto space-y-20">
-
-          {/* Heading */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center space-y-5 max-w-2xl mx-auto"
-          >
-            <p
-              style={{ fontFamily: "var(--font-serif)" }}
-              className="italic text-[#c4943d] text-lg"
+          <p className="text-sm font-bold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
+            Live preference profile
+          </p>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={profileExamples[activeExample]?.headline}
+              initial={shouldReduceMotion ? undefined : { opacity: 0, y: 10 }}
+              animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+              exit={shouldReduceMotion ? undefined : { opacity: 0, y: -10 }}
+              transition={shouldReduceMotion ? undefined : { duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             >
-              Powered by real data
-            </p>
-            <h2
-              style={{ fontFamily: "var(--font-display)" }}
-              className="text-3xl md:text-4xl font-bold text-white tracking-[-0.03em] leading-tight"
-            >
-              One conversation.
-              <br />
-              Three platforms. Your best match.
-            </h2>
-            <p className="text-[#7a7470] text-base leading-relaxed">
-              You tell Nest what you're looking for. We simultaneously search
-              India's top rental platforms and return a shortlist ranked by
-              budget, location, size, and the amenities that matter most.
-            </p>
-          </motion.div>
+              <h2 style={{ fontFamily: "var(--font-display)" }} className="mt-3 text-3xl font-bold tracking-tight md:text-[2.15rem]">
+                {profileExamples[activeExample].headline}
+              </h2>
 
-          {/* Platform cards */}
-          <div className="grid md:grid-cols-3 gap-5">
-            {platforms.map((platform, i) => (
-              <motion.div
-                key={platform.name}
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ delay: i * 0.1, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                className="rounded-2xl p-7 space-y-6 flex flex-col"
+              <div className="mt-5 flex flex-wrap gap-2.5">
+                {profileExamples[activeExample].chips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-full border px-4 py-1.5 text-sm font-semibold md:text-base"
+                    style={{ borderColor: "rgba(26,23,20,0.16)", color: MUTED }}
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+
+              <p className="mt-4 text-base leading-relaxed text-[#6b635a] md:text-lg">
+                {profileExamples[activeExample].insight}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="mt-5 flex items-center gap-2">
+            {profileExamples.map((example, i) => (
+              <button
+                key={example.headline}
+                type="button"
+                onClick={() => setActiveExample(i)}
+                className="h-2.5 rounded-full transition-all"
                 style={{
-                  backgroundColor: "#1a1917",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  width: i === activeExample ? 30 : 10,
+                  backgroundColor: i === activeExample ? GOLD : "rgba(26,23,20,0.2)",
                 }}
-              >
-                {/* Logo on white pill — preserves brand colors */}
-                <div className="rounded-xl px-4 py-3 w-fit bg-white">
-                  <div className="relative h-9 w-28">
-                    <Image
-                      src={platform.logo}
-                      alt={platform.name}
-                      fill
-                      className="object-contain object-left"
-                    />
-                  </div>
-                </div>
-                <p className="text-[#7a7470] text-sm leading-relaxed flex-1">
-                  {platform.desc}
-                </p>
-              </motion.div>
+                aria-label={`Show preference example ${i + 1}`}
+              />
             ))}
           </div>
-        </div>
+
+          <div className="mt-7 space-y-3">
+            {platforms.map((platform) => (
+              <div
+                key={platform.name}
+                className="flex items-center justify-between rounded-2xl border bg-white/75 px-4 py-3"
+                style={{ borderColor: "rgba(26,23,20,0.1)" }}
+              >
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="relative h-8 w-24">
+                    <Image src={platform.logo} alt={platform.name} fill className="object-contain object-left" />
+                  </div>
+                  <span className="text-base font-bold tracking-tight text-[#2e2a25] md:text-lg">
+                    {platform.displayName}
+                  </span>
+                </div>
+                <span className="text-xs font-bold uppercase tracking-[0.16em] md:text-sm" style={{ color: GOLD }}>
+                  Synced
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </section>
 
-      {/* ── How it works — light ─────────────────────────── */}
-      <section className="px-8 py-28 max-w-6xl mx-auto">
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.6 }}
-          style={{ fontFamily: "var(--font-serif)" }}
-          className="italic text-[#c4943d] text-center text-lg mb-20"
+      <section id="partners" className="px-5 pb-20 md:px-8">
+        <motion.div
+          {...reveal}
+          className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] border px-6 py-12 md:px-10"
+          style={{
+            borderColor: "rgba(255,255,255,0.45)",
+            background:
+              "linear-gradient(140deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.14) 52%, rgba(214,166,63,0.16) 100%)",
+            boxShadow:
+              "0 24px 65px -30px rgba(26,23,20,0.45), inset 0 1px 0 rgba(255,255,255,0.42)",
+            backdropFilter: "blur(14px)",
+          }}
         >
-          The process
+          <div
+            className="pointer-events-none absolute -top-20 -left-10 h-48 w-48 rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(244,207,119,0.3) 0%, transparent 70%)" }}
+          />
+          <div
+            className="pointer-events-none absolute -bottom-24 right-8 h-64 w-64 rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(214,166,63,0.22) 0%, transparent 70%)" }}
+          />
+
+          <p
+            style={{ fontFamily: "var(--font-serif)", color: "#8d651a" }}
+            className="text-center text-3xl italic md:text-4xl"
+          >
+            Verified data partners
+          </p>
+          <h2
+            style={{ fontFamily: "var(--font-display)" }}
+            className="mx-auto mt-4 max-w-4xl text-center text-4xl font-bold leading-tight tracking-[-0.03em] text-[#1a1714] md:text-5xl"
+          >
+            We search these platforms in real time and merge results into one ranked shortlist.
+          </h2>
+          <p className="mx-auto mt-4 max-w-3xl text-center text-lg leading-relaxed text-[#4b4339] md:text-xl">
+            One request from you. Unified inventory from every partner.
+          </p>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {platforms.map((platform, i) => (
+              <motion.article
+                key={platform.name}
+                initial={shouldReduceMotion ? undefined : { opacity: 0, y: 22 }}
+                whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+                viewport={shouldReduceMotion ? undefined : { once: true, amount: 0.3 }}
+                transition={
+                  shouldReduceMotion
+                    ? undefined
+                    : { duration: 0.55, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }
+                }
+                className="rounded-2xl border p-5"
+                style={{
+                  borderColor: "rgba(255,255,255,0.42)",
+                  background:
+                    "linear-gradient(150deg, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.28) 100%)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6), 0 16px 28px -24px rgba(26,23,20,0.4)",
+                }}
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="inline-flex rounded-xl bg-white px-4 py-3 shadow-[0_8px_20px_-16px_rgba(26,23,20,0.55)]">
+                    <div className="relative h-9 w-28">
+                      <Image src={platform.logo} alt={platform.name} fill className="object-contain object-left" />
+                    </div>
+                  </div>
+                  <span className="text-base font-bold tracking-tight text-[#2d2922] md:text-lg">
+                    {platform.displayName}
+                  </span>
+                </div>
+                <p className="text-base leading-relaxed text-[#4f463d] md:text-lg">
+                  {platform.desc}
+                </p>
+                <div className="mt-4 inline-flex rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.13em] text-[#8d651a] md:text-sm">
+                  Live feed integrated
+                </div>
+              </motion.article>
+            ))}
+          </div>
+        </motion.div>
+      </section>
+
+      <section id="process" className="mx-auto w-full max-w-6xl px-5 pb-24 md:px-8">
+        <motion.p
+          {...reveal}
+          style={{ fontFamily: "var(--font-serif)", color: GOLD }}
+          className="text-center text-2xl italic md:text-3xl"
+        >
+          How Nest works
         </motion.p>
 
-        <div className="grid md:grid-cols-3 gap-14">
+        <div className="mt-12 grid gap-4 md:grid-cols-3">
           {steps.map((step, i) => (
-            <motion.div
+            <motion.article
               key={step.num}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.35 }}
-              transition={{ delay: i * 0.12, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-              className="space-y-5"
+              initial={shouldReduceMotion ? undefined : { opacity: 0, y: 22 }}
+              whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={shouldReduceMotion ? undefined : { once: true, amount: 0.3 }}
+              transition={
+                shouldReduceMotion
+                  ? undefined
+                  : { duration: 0.55, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }
+              }
+              className="rounded-2xl border p-6"
+              style={{
+                borderColor: "rgba(26,23,20,0.12)",
+                backgroundColor: "rgba(255,255,255,0.5)",
+              }}
             >
-              <span
-                style={{ fontFamily: "var(--font-serif)", color: "#b8b0a6" }}
-                className="text-5xl block"
-              >
+              <p style={{ fontFamily: "var(--font-serif)", color: GOLD }} className="text-5xl md:text-6xl">
                 {step.num}
-              </span>
+              </p>
               <h3
                 style={{ fontFamily: "var(--font-display)" }}
-                className="text-xl font-bold tracking-tight"
+                className="mt-4 text-2xl font-bold tracking-tight md:text-3xl"
               >
                 {step.title}
               </h3>
-              <p className="text-[#6b635a] text-sm leading-relaxed">
-                {step.desc}
-              </p>
-            </motion.div>
+              <p className="mt-3 text-base leading-relaxed text-[#5e564d] md:text-lg">{step.desc}</p>
+            </motion.article>
           ))}
         </div>
       </section>
 
-      {/* ── Final CTA — dark ─────────────────────────────── */}
-      <section
-        style={{ backgroundColor: "#0e0d0b" }}
-        className="px-8 py-36 text-center"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.35 }}
-          transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-2xl mx-auto space-y-10"
-        >
+      <section className="bg-[#0f0d0a] px-5 py-24 text-center md:px-8">
+        <motion.div {...reveal} className="mx-auto max-w-2xl space-y-8">
           <h2
             style={{ fontFamily: "var(--font-display)" }}
-            className="text-4xl md:text-5xl font-bold leading-tight tracking-[-0.04em] text-white"
+            className="text-5xl font-bold leading-tight tracking-[-0.04em] text-white md:text-6xl"
           >
-            Your next home is{" "}
+            Your next home is one
             <span
-              style={{ fontFamily: "var(--font-serif)", color: "#c4943d" }}
-              className="italic font-normal"
+              style={{
+                color: GOLD_BRIGHT,
+                fontFamily: "var(--font-serif)",
+              }}
+              className="ml-2 italic font-normal"
             >
-              one conversation away.
+              smart conversation
             </span>
+            away.
           </h2>
           <Link
             href="/call"
-            className="inline-flex items-center gap-2 px-9 py-4 text-sm font-bold rounded-full transition-colors"
+            className="inline-flex items-center rounded-full px-10 py-4 text-base font-bold tracking-wide transition-transform hover:scale-[1.02]"
             style={{
-              backgroundColor: "#c4943d",
-              color: "#1a1714",
-              boxShadow: "0 8px 32px -8px rgba(196,148,61,0.45)",
+              backgroundImage: `linear-gradient(120deg, ${GOLD} 0%, ${GOLD_BRIGHT} 100%)`,
+              color: INK,
+              boxShadow: "0 16px 34px -14px rgba(214,166,63,0.9)",
             }}
           >
-            Start your search →
+            Start your search
           </Link>
         </motion.div>
       </section>

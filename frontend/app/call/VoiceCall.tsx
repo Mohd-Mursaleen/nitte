@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "http://localhost:8000";
 
 type Stage = "idle" | "recording" | "analyzing";
+type TheaterStatusResponse = { status: string };
+type TheaterLogsResponse = { logs: string[] };
 
 // Pre-compute stable waveform bar heights (module-level = no flicker on re-render)
 const WAVE_HEIGHTS = Array.from({ length: 28 }, () => Math.floor(Math.random() * 34) + 8);
@@ -36,6 +38,14 @@ const inputBase: React.CSSProperties = {
 
 function formatTime(s: number) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, { cache: "no-store", ...init });
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status})`);
+  }
+  return response.json() as Promise<T>;
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
@@ -84,6 +94,7 @@ export default function VoiceCall() {
           <AnalyzingView
             key="analyzing"
             onDone={() => router.push("/results")}
+            onBack={() => setStage("idle")}
           />
         )}
       </AnimatePresence>
@@ -426,43 +437,76 @@ function RecordingView({ onStop }: { onStop: () => void }) {
 
 // ── Analyzing view ────────────────────────────────────────────────────────────
 
-function AnalyzingView({ onDone }: { onDone: () => void }) {
+function AnalyzingView({
+  onDone,
+  onBack,
+}: {
+  onDone: () => void;
+  onBack: () => void;
+}) {
   const [logs, setLogs] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/session/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    }).catch(() => {});
+    let isMounted = true;
+    let statusInterval: ReturnType<typeof setInterval> | null = null;
+    let logInterval: ReturnType<typeof setInterval> | null = null;
 
-    const statusInterval = setInterval(async () => {
+    const run = async () => {
+      doneRef.current = false;
+      setError(null);
+
       try {
-        const { status } = (await fetch(`${BACKEND_URL}/theater/status`).then((r) =>
-          r.json()
-        )) as { status: string };
-        if (status === "complete" && !doneRef.current) {
-          doneRef.current = true;
-          clearInterval(statusInterval);
-          onDone();
+        await fetchJson(`${BACKEND_URL}/session/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+      } catch {
+        if (isMounted) {
+          setError("Could not start search. Ensure backend is running, then go back and retry.");
         }
-      } catch {}
-    }, 2000);
+        return;
+      }
 
-    const logInterval = setInterval(async () => {
-      try {
-        const { logs: incoming } = (await fetch(`${BACKEND_URL}/theater/logs`).then((r) =>
-          r.json()
-        )) as { logs: string[] };
-        if (Array.isArray(incoming)) setLogs(incoming);
-      } catch {}
-    }, 1500);
+      statusInterval = setInterval(async () => {
+        try {
+          const { status } = await fetchJson<TheaterStatusResponse>(`${BACKEND_URL}/theater/status`);
+          if (!isMounted) return;
+          setError(null);
+          if (status === "complete" && !doneRef.current) {
+            doneRef.current = true;
+            if (statusInterval) clearInterval(statusInterval);
+            onDone();
+          }
+        } catch {
+          if (isMounted) {
+            setError((prev) => prev ?? "Connection issue while polling status. Retrying…");
+          }
+        }
+      }, 2000);
+
+      logInterval = setInterval(async () => {
+        try {
+          const { logs: incoming } = await fetchJson<TheaterLogsResponse>(`${BACKEND_URL}/theater/logs`);
+          if (!isMounted) return;
+          if (Array.isArray(incoming)) setLogs(incoming);
+        } catch {
+          if (isMounted) {
+            setError((prev) => prev ?? "Connection issue while fetching logs. Retrying…");
+          }
+        }
+      }, 1500);
+    };
+
+    void run();
 
     return () => {
-      clearInterval(statusInterval);
-      clearInterval(logInterval);
+      isMounted = false;
+      if (statusInterval) clearInterval(statusInterval);
+      if (logInterval) clearInterval(logInterval);
     };
   }, [onDone]);
 
@@ -539,6 +583,19 @@ function AnalyzingView({ onDone }: { onDone: () => void }) {
         )}
         <div ref={logsEndRef} />
       </div>
+
+      {error && (
+        <div className="w-full rounded-xl border border-amber-300/50 bg-amber-50/70 p-4 text-left">
+          <p className="text-sm font-medium text-amber-900">{error}</p>
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-3 inline-flex rounded-full border border-[#1a1714]/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#1a1714] transition hover:border-[#1a1714]/35"
+          >
+            Back to call setup
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }

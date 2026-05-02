@@ -55,5 +55,5 @@ Backend endpoints used:
 
 - **Biome 2.2** — linter + formatter (2-space indent, organizeImports on save). Replaces ESLint/Prettier.
 - **Tailwind CSS v4** — PostCSS plugin, no `tailwind.config.*` file needed.
-- **Framer Motion** — all animations. Use `useReducedMotion()` guard when adding new motion.
+- **Framer Motion** — all animation. Use `useReducedMotion()` guard when adding new motion.
 - **pnpm** — package manager (workspace config present).
