@@ -12,8 +12,7 @@ from playwright.async_api import async_playwright
 from automations.utils import get_chrome_profile, slow_type
 
 # ── Hardcoded search inputs (edit these for demo) ────────────────────────────
-SEARCH_CITY = "Bangalore"
-SEARCH_QUERY = "2 BHK flats for rent in Koramangala Bangalore"
+SEARCH_QUERY = "2 BHK flats for rent in Electronic City Bangalore"
 SITE_URL = "https://www.99acres.com"
 
 
@@ -21,11 +20,13 @@ async def run_99acres(session: dict[str, Any]):
     """
     Theater choreography for 99acres.
     Opens visibly (headless=False) using your real Chrome profile.
+    Types query slowly, scrolls listings, hovers cards, clicks a detail page.
     """
     chrome_profile = get_chrome_profile()
-
-    async with async_playwright() as p:
-        browser = await p.chromium.launch_persistent_context(
+    playwright_instance = await async_playwright().start()
+    browser = None
+    try:
+        browser = await playwright_instance.chromium.launch_persistent_context(
             user_data_dir=chrome_profile,
             headless=False,
             args=[
@@ -49,9 +50,9 @@ async def run_99acres(session: dict[str, Any]):
             await asyncio.sleep(1)
             await page.keyboard.press("Enter")
         except Exception:
-            # Fallback: navigate directly to search URL
+            # Fallback: navigate directly to search results
             await page.goto(
-                f"https://www.99acres.com/search/property/buy/bangalore?search_type=Manual&search_intent=buy&src=DESK",
+                "https://www.99acres.com/search/property/rent/bangalore?search_type=Manual&search_intent=rent&src=DESK",
                 wait_until="domcontentloaded",
             )
 
@@ -59,34 +60,54 @@ async def run_99acres(session: dict[str, Any]):
 
         # ── STEP 3: Scroll down slowly through listings ──────────────────────
         for _ in range(8):
-            await page.evaluate("window.scrollBy(0, 350)")
-            await asyncio.sleep(0.5)
+            try:
+                await page.evaluate("window.scrollBy(0, 350)")
+                await asyncio.sleep(0.5)
+            except Exception:
+                pass
 
         await asyncio.sleep(1)
 
         # ── STEP 4: Hover over first 3 listing cards ─────────────────────────
-        cards = await page.locator("[data-tracking*='srp_card'], .tupleNew__card, article").all()
-        for card in cards[:3]:
-            try:
-                await card.hover()
-                await asyncio.sleep(1.2)
-            except Exception:
-                pass
+        try:
+            cards = await page.locator(
+                "[data-tracking*='srp_card'], .tupleNew__card, article"
+            ).all()
+            for card in cards[:3]:
+                try:
+                    await card.hover()
+                    await asyncio.sleep(1.2)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
-        # ── STEP 5: Click a listing, view details, go back ───────────────────
-        if cards:
-            try:
+        # ── STEP 5: Click first listing, view details, go back ───────────────
+        try:
+            cards = await page.locator(
+                "[data-tracking*='srp_card'], .tupleNew__card, article"
+            ).all()
+            if cards:
                 await cards[0].click()
                 await asyncio.sleep(3)
                 await page.go_back()
                 await asyncio.sleep(2)
-            except Exception:
-                pass
+        except Exception:
+            pass
 
         # ── STEP 6: Scroll a bit more ────────────────────────────────────────
         for _ in range(4):
-            await page.evaluate("window.scrollBy(0, 300)")
-            await asyncio.sleep(0.6)
+            try:
+                await page.evaluate("window.scrollBy(0, 300)")
+                await asyncio.sleep(0.6)
+            except Exception:
+                pass
 
         await asyncio.sleep(2)
-        await browser.close()
+
+    except Exception as e:
+        print(f"[99acres] Error: {e}")
+    finally:
+        if browser:
+            await browser.close()
+        await playwright_instance.stop()
