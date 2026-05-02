@@ -119,11 +119,11 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="#highlight"
+              href="/call"
               data-glow-surface="orange"
               className="rounded-full border border-orange-300 bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-[0_22px_45px_-24px_rgba(249,115,22,0.98)] transition hover:bg-orange-600"
             >
-              Set Your Requirements
+              Find Your Home
             </Link>
             <p className="rounded-full border border-orange-200 bg-white px-4 py-3 text-xs font-semibold tracking-[0.12em] text-orange-700 uppercase">
               One search • best listings
