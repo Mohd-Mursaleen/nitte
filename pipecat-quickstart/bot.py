@@ -162,15 +162,15 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
         settings=DeepgramSTTService.Settings(
-            language="hi",        # Primary: Hindi
-            detect_language=True, # Auto-detect English vs Hindi
+            model="nova-3-general",  # nova-3 multilingual: EN, HI, ES, FR, DE, RU, PT, JA, IT, NL
+            language="multi",        # Deepgram multilingual mode — handles Hinglish natively
         ),
     )
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
         settings=CartesiaTTSService.Settings(
-            voice="4877b818-c7fe-4c89-b1cf-eadf8e23da72",  # British Reading Lady — swap for Indian voice if available
+            voice="95d51f79-c397-46f9-b49a-23763d3eaa2d",  # Hinglish Indian Female voice
         ),
     )
 
