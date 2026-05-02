@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans, Syne } from "next/font/google";
+import CursorTrail from "./CursorTrail";
 import "./globals.css";
 
 const bodyFont = DM_Sans({
@@ -35,10 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
       <body
         className={`${bodyFont.variable} ${displayFont.variable} ${serifFont.variable} min-h-full`}
       >
+        <CursorTrail />
         {children}
       </body>
     </html>

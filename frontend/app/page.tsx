@@ -276,7 +276,13 @@ export default function Home() {
               >
                 <div className="flex items-center gap-3 md:gap-4">
                   <div className="relative h-8 w-24">
-                    <Image src={platform.logo} alt={platform.name} fill className="object-contain object-left" />
+                    <Image
+                      src={platform.logo}
+                      alt={platform.name}
+                      fill
+                      sizes="(max-width: 768px) 96px, 96px"
+                      className="object-contain object-left"
+                    />
                   </div>
                   <span className="text-base font-bold tracking-tight text-[#2e2a25] md:text-lg">
                     {platform.displayName}
@@ -352,7 +358,13 @@ export default function Home() {
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div className="inline-flex rounded-xl bg-white px-4 py-3 shadow-[0_8px_20px_-16px_rgba(26,23,20,0.55)]">
                     <div className="relative h-9 w-28">
-                      <Image src={platform.logo} alt={platform.name} fill className="object-contain object-left" />
+                      <Image
+                        src={platform.logo}
+                        alt={platform.name}
+                        fill
+                        sizes="(max-width: 768px) 112px, 112px"
+                        className="object-contain object-left"
+                      />
                     </div>
                   </div>
                   <span className="text-base font-bold tracking-tight text-[#2d2922] md:text-lg">

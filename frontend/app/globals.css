@@ -58,3 +58,32 @@ textarea {
   background: #c4943d;
   color: #fff;
 }
+
+.cursor-trail-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.cursor-sparkle {
+  position: fixed;
+  font-size: 22px;
+  line-height: 1;
+  transform: translate(-50%, -50%) rotate(var(--sparkle-rotate, 0deg));
+  filter: drop-shadow(0 6px 14px rgba(26, 23, 20, 0.32));
+  text-shadow: 0 0 14px rgba(214, 166, 63, 0.35);
+  animation: cursor-sparkle-fade 900ms ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes cursor-sparkle-fade {
+  0% {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(0.75) rotate(var(--sparkle-rotate, 0deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -58%) scale(1.22) rotate(var(--sparkle-rotate, 0deg));
+  }
+}
