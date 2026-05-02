@@ -9,15 +9,20 @@ FastAPI server that:
 
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 load_dotenv()
+
+PIPECAT_URL = os.getenv("PIPECAT_URL", "http://localhost:8765")
 
 from automations.log_store import clear_logs, get_logs
 from automations.runner import AutomationRunner
@@ -30,6 +35,7 @@ from session.store import SessionStore
 session_store = SessionStore()
 automation_runner = AutomationRunner()
 research_store = ResearchStore()
+call_bridge_state: dict[str, Any] = {"active": False, "started_at": 0.0}
 
 
 @asynccontextmanager
@@ -74,6 +80,30 @@ class SessionData(BaseModel):
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
+
+def _fallback_call_status() -> str:
+    """Infer call progress when upstream Pipecat status endpoint is unavailable."""
+    if not call_bridge_state.get("active"):
+        return "idle"
+
+    research_status = getattr(research_store, "status", "idle")
+    theater_status = getattr(automation_runner, "status", "idle")
+
+    if research_status == "complete" or theater_status == "complete":
+        return "complete"
+    if research_status == "error":
+        return "failed"
+    if research_status == "running" or theater_status == "running":
+        return "processing"
+    if session_store.get():
+        return "processing"
+
+    # Pipecat status unavailable and no downstream progress yet:
+    # keep "calling" briefly, then move to "processing" so UI doesn't stall.
+    started_at = float(call_bridge_state.get("started_at") or 0.0)
+    if started_at and (time.time() - started_at) < 45:
+        return "calling"
+    return "processing"
 
 @app.get("/health")
 async def health():
@@ -141,6 +171,66 @@ async def get_results():
 
     # 3. Pure hardcoded fallback
     return {"results": hardcoded, "source": "fallback"}
+
+
+@app.post("/call/initiate")
+async def initiate_call(request: Request):
+    """Proxy call initiation request to the outbound Pipecat service.
+
+    Body: {"phone": "+91XXXXXXXXXX"}
+
+    Returns:
+        JSON with status and call_sid from Pipecat service, or error.
+    """
+    body = await request.json()
+    phone = body.get("phone", "")
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(f"{PIPECAT_URL}/call", json={"to": phone})
+            if resp.is_success:
+                call_bridge_state["active"] = True
+                call_bridge_state["started_at"] = time.time()
+            else:
+                call_bridge_state["active"] = False
+            return JSONResponse(resp.json(), status_code=resp.status_code)
+    except Exception as e:
+        call_bridge_state["active"] = False
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+@app.get("/call/status")
+async def call_status():
+    """Proxy call status check to the outbound Pipecat service.
+
+    Returns:
+        JSON with status (idle|calling|on_call|processing|complete|failed).
+    """
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"{PIPECAT_URL}/call/status")
+            if resp.status_code == 404:
+                status = _fallback_call_status()
+                if status in ("complete", "failed", "idle"):
+                    call_bridge_state["active"] = False
+                return JSONResponse({"status": status, "source": "backend-fallback"})
+
+            data = resp.json()
+            status = data.get("status")
+            if status in ("complete", "failed", "idle"):
+                call_bridge_state["active"] = False
+            return JSONResponse(data, status_code=resp.status_code)
+    except Exception as exc:
+        status = _fallback_call_status()
+        if status in ("complete", "failed", "idle"):
+            call_bridge_state["active"] = False
+        return JSONResponse(
+            {
+                "status": status,
+                "source": "backend-fallback",
+                "message": f"call status unavailable: {exc}",
+            }
+        )
 
 
 @app.post("/theater/reset")

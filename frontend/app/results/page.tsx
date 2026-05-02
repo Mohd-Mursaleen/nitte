@@ -18,19 +18,30 @@ const PLATFORM_COLORS: Record<string, string> = {
   MagicBricks: "#7c3aed",
 };
 
+const FALLBACK_LISTING_IMAGES = [
+  "/fallback/2bhk1.png",
+  "/fallback/2bhk2.png",
+  "/fallback/2bhk3.png",
+  "/fallback/2bhk4.png",
+  "/fallback/2bhk5.png",
+  "/fallback/2bhk6.png",
+];
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface LocalityIntel {
-  overall_rating?: number;
-  aqi?: number;
-  noise_db?: number;
-  traffic_delay?: string;
-  water_supply?: string;
-  internet?: string;
-  power_backup?: string;
-  safety?: string;
-  pros?: string[];
-  red_flags?: string[];
+  overall_rating?: unknown;
+  aqi?: unknown;
+  noise_db?: unknown;
+  noise?: unknown;
+  traffic_delay?: unknown;
+  traffic?: unknown;
+  water_supply?: unknown;
+  internet?: unknown;
+  power_backup?: unknown;
+  safety?: unknown;
+  pros?: unknown;
+  red_flags?: unknown;
 }
 
 interface Owner {
@@ -63,6 +74,109 @@ interface Listing {
 type SortKey = "match" | "vibe" | "trust" | "rent_asc" | "rent_desc";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+interface NormalizedLocalityIntel {
+  overall_rating?: number;
+  aqi?: number;
+  aqi_level?: string;
+  pm25?: number;
+  pm10?: number;
+  noise_db?: number;
+  traffic_delay?: string;
+  water_supply?: string;
+  internet?: string;
+  power_backup?: string;
+  safety?: string;
+  pros: string[];
+  red_flags: string[];
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number.parseFloat(value.replace(/[^\d.-]/g, ""));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const candidates = [
+      obj.value,
+      obj.overall_rating,
+      obj.level_db,
+      obj.peak_delay,
+      obj.score,
+    ];
+    for (const c of candidates) {
+      const n = asNumber(c);
+      if (n != null) return n;
+    }
+  }
+  return undefined;
+}
+
+function asText(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const t = value.trim();
+    return t.length > 0 ? t : undefined;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const candidates = [obj.value, obj.level, obj.status, obj.peak_delay, obj.label];
+    for (const c of candidates) {
+      const text = asText(c);
+      if (text) return text;
+    }
+  }
+  return undefined;
+}
+
+function asStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => asText(item))
+      .filter((item): item is string => Boolean(item));
+  }
+  const single = asText(value);
+  return single ? [single] : [];
+}
+
+function normalizeLocalityIntel(raw?: LocalityIntel): NormalizedLocalityIntel | null {
+  if (!raw) return null;
+
+  const aqiObj = (raw.aqi && typeof raw.aqi === "object"
+    ? (raw.aqi as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+  const noiseObj = (raw.noise && typeof raw.noise === "object"
+    ? (raw.noise as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+  const trafficObj = (raw.traffic && typeof raw.traffic === "object"
+    ? (raw.traffic as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+
+  const intel: NormalizedLocalityIntel = {
+    overall_rating: asNumber(raw.overall_rating),
+    aqi: asNumber(raw.aqi) ?? asNumber(aqiObj.value),
+    aqi_level: asText(aqiObj.level),
+    pm25: asNumber(aqiObj.pm25),
+    pm10: asNumber(aqiObj.pm10),
+    noise_db: asNumber(raw.noise_db) ?? asNumber(noiseObj.level_db) ?? asNumber(noiseObj.value),
+    traffic_delay: asText(raw.traffic_delay) ?? asText(trafficObj.peak_delay) ?? asText(trafficObj.value),
+    water_supply: asText(raw.water_supply),
+    internet: asText(raw.internet),
+    power_backup: asText(raw.power_backup),
+    safety: asText(raw.safety),
+    pros: asStringList(raw.pros),
+    red_flags: asStringList(raw.red_flags),
+  };
+
+  const hasAnyData = Object.values(intel).some((v) => {
+    if (Array.isArray(v)) return v.length > 0;
+    return v != null && v !== "";
+  });
+  return hasAnyData ? intel : null;
+}
 
 function aqiColor(aqi: number): string {
   if (aqi < 50) return "#10b981";
@@ -97,7 +211,7 @@ function ScoreRing({
   label: string;
   size?: number;
 }) {
-  const strokeWidth = 3;
+  const strokeWidth = 4;
   const r = (size - strokeWidth * 2) / 2;
   const circumference = 2 * Math.PI * r;
   const offset = circumference * (1 - Math.min(score, 100) / 100);
@@ -116,7 +230,7 @@ function ScoreRing({
             cy={size / 2}
             r={r}
             fill="none"
-            stroke="rgba(255,255,255,0.2)"
+            stroke="rgba(26,23,20,0.14)"
             strokeWidth={strokeWidth}
           />
           <circle
@@ -134,7 +248,7 @@ function ScoreRing({
         <div className="absolute inset-0 flex items-center justify-center">
           <span
             className="font-bold leading-none"
-            style={{ fontSize: size < 48 ? 9 : 11, color: "white" }}
+            style={{ fontSize: size < 58 ? 10 : 14, color: "#1a1714" }}
           >
             {score}
           </span>
@@ -142,7 +256,7 @@ function ScoreRing({
       </div>
       <span
         className="font-bold uppercase tracking-wider"
-        style={{ fontSize: 9, color: "rgba(255,255,255,0.7)" }}
+        style={{ fontSize: size < 58 ? 9 : 10, color: "rgba(26,23,20,0.62)" }}
       >
         {label}
       </span>
@@ -287,9 +401,14 @@ export default function ResultsPage() {
           <div className="flex items-center justify-between">
             <div>
               <span
-                style={{ fontFamily: "var(--font-display), sans-serif" }}
+                style={{
+                  fontFamily: "var(--font-display), sans-serif",
+                  background: "linear-gradient(120deg, #d6a63f, #f4cf77)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
                 className="text-[10px] font-bold uppercase tracking-[0.24em] block mb-0.5"
-              style={{ background: "linear-gradient(120deg, #d6a63f, #f4cf77)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
               >
                 Ghosla
               </span>
@@ -417,6 +536,14 @@ function ListingCard({
   const vibe = listing.vibe_score ?? 65;
   const platformColor = PLATFORM_COLORS[listing.platform] ?? "#6b635a";
   const platformLogo = PLATFORM_LOGOS[listing.platform];
+  const intel = normalizeLocalityIntel(listing.locality_intel);
+  const [primaryImageFailed, setPrimaryImageFailed] = useState(false);
+  const [fallbackImageFailed, setFallbackImageFailed] = useState(false);
+  const primaryImage = listing.image_url?.trim();
+  const fallbackImage = FALLBACK_LISTING_IMAGES[index % FALLBACK_LISTING_IMAGES.length];
+  const imageSrc = !primaryImageFailed && primaryImage
+    ? primaryImage
+    : (!fallbackImageFailed ? fallbackImage : undefined);
 
   const imagePlaceholderStyle: React.CSSProperties = {
     background: `linear-gradient(135deg, ${platformColor}22 0%, ${platformColor}10 100%)`,
@@ -436,12 +563,19 @@ function ListingCard({
     >
       {/* Hero image */}
       <div className="relative overflow-hidden" style={{ height: 200 }}>
-        {listing.image_url ? (
+        {imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={listing.image_url}
+            src={imageSrc}
             alt={listing.title}
             className="w-full h-full object-cover"
+            onError={() => {
+              if (imageSrc === primaryImage) {
+                setPrimaryImageFailed(true);
+              } else {
+                setFallbackImageFailed(true);
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={imagePlaceholderStyle}>
@@ -465,13 +599,6 @@ function ListingCard({
           )}
         </div>
 
-        {/* Score rings — bottom right */}
-        <div className="absolute bottom-3 right-3 flex items-end gap-3">
-          <ScoreRing score={listing.match_score} color="#d6a63f" label="Match" />
-          <ScoreRing score={vibe} color={scoreColor(vibe)} label="Vibe" />
-          <ScoreRing score={trust} color={scoreColor(trust)} label="Trust" />
-        </div>
-
         {/* Rent overlay — bottom left */}
         <div className="absolute bottom-3 left-3">
           <p
@@ -491,6 +618,16 @@ function ListingCard({
 
       {/* Card body */}
       <div className="p-5 space-y-4">
+        {/* Score rings row */}
+        <div
+          className="rounded-xl border border-[#e8e0d4] p-3.5 flex items-center justify-around"
+          style={{ backgroundColor: "#faf7f0" }}
+        >
+          <ScoreRing score={listing.match_score} color="#d6a63f" label="Match" size={68} />
+          <ScoreRing score={vibe} color={scoreColor(vibe)} label="Vibe" size={68} />
+          <ScoreRing score={trust} color={scoreColor(trust)} label="Trust" size={68} />
+        </div>
+
         {/* Title */}
         <div>
           <h2
@@ -576,8 +713,20 @@ function ListingCard({
           </div>
         )}
 
+        {/* Listing advisor */}
+        <div className="rounded-xl border border-[#e8e0d4] p-3.5 space-y-2" style={{ backgroundColor: "#faf7f0" }}>
+          <button
+            type="button"
+            onClick={() => undefined}
+            className="w-full px-4 py-2.5 rounded-full text-[#1a1714] text-xs font-bold transition-opacity hover:opacity-85"
+            style={{ background: "linear-gradient(120deg, #d6a63f 0%, #f4cf77 100%)" }}
+          >
+            Talk to listing advisor
+          </button>
+        </div>
+
         {/* Locality intel toggle */}
-        {listing.locality_intel && (
+        {intel && (
           <button
             type="button"
             onClick={onToggle}
@@ -591,7 +740,7 @@ function ListingCard({
 
       {/* Locality intel panel */}
       <AnimatePresence>
-        {expanded && listing.locality_intel && (
+        {expanded && intel && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -599,7 +748,7 @@ function ListingCard({
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <LocalityPanel intel={listing.locality_intel} />
+            <LocalityPanel intel={intel} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -609,7 +758,7 @@ function ListingCard({
 
 // ── Locality panel ─────────────────────────────────────────────────────────────
 
-function LocalityPanel({ intel }: { intel: NonNullable<Listing["locality_intel"]> }) {
+function LocalityPanel({ intel }: { intel: NormalizedLocalityIntel }) {
   const stats = [
     intel.noise_db != null ? { label: "Noise", value: `${intel.noise_db} dB` } : null,
     intel.traffic_delay ? { label: "Traffic", value: intel.traffic_delay } : null,
@@ -650,6 +799,11 @@ function LocalityPanel({ intel }: { intel: NonNullable<Listing["locality_intel"]
               Air Quality (AQI)
             </p>
             <p className="text-lg font-bold text-[#1a1714]">{intel.aqi}</p>
+            {(intel.pm25 != null || intel.pm10 != null) && (
+              <p className="text-[11px] text-[#6b635a] mt-0.5">
+                {intel.pm25 != null ? `PM2.5: ${intel.pm25}` : ""}{intel.pm25 != null && intel.pm10 != null ? " · " : ""}{intel.pm10 != null ? `PM10: ${intel.pm10}` : ""}
+              </p>
+            )}
           </div>
           <span
             className="rounded-full px-3 py-1 text-xs font-bold"
@@ -658,7 +812,7 @@ function LocalityPanel({ intel }: { intel: NonNullable<Listing["locality_intel"]
               backgroundColor: `${aqiColor(intel.aqi)}18`,
             }}
           >
-            {aqiLabel(intel.aqi)}
+            {intel.aqi_level ?? aqiLabel(intel.aqi)}
           </span>
         </div>
       )}

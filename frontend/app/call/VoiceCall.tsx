@@ -7,10 +7,10 @@ import { AnimatePresence, motion } from "framer-motion";
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || "http://localhost:8000";
 
-type Stage = "idle" | "recording" | "analyzing";
+type Stage = "idle" | "calling" | "analyzing";
 type SessionData = Record<string, string>;
 
-// Hardcoded session — used when mic is tapped (mimics a real voice session)
+// ── Hardcoded session — form submit or fallback ────────────────────────────────
 const HARDCODED_SESSION: SessionData = {
   name: "Mohammed Mursaleen",
   age: "28",
@@ -35,10 +35,24 @@ const HARDCODED_SESSION: SessionData = {
   has_locality: "yes",
 };
 
+const PLATFORMS = [
+  { name: "NoBroker", logo: "/nobroker.png", color: "#e11d48" },
+  { name: "MagicBricks", logo: "/magicbricks.png", color: "#7c3aed" },
+  { name: "99acres", logo: "/99acres.png", color: "#2563eb" },
+];
+
 const WAVE_HEIGHTS = Array.from(
   { length: 28 },
   () => Math.floor(Math.random() * 34) + 8,
 );
+
+const SCRAPING_LINES = [
+  "Finding homes that actually match your vibe…",
+  "Scanning trusted listings across top platforms…",
+  "Filtering noise, highlighting real options…",
+  "Matching commute, budget, and lifestyle signals…",
+  "Shortlisting homes worth your time…",
+];
 
 const lightBg: React.CSSProperties = {
   backgroundColor: "#e2ded7",
@@ -67,19 +81,13 @@ function formatTime(s: number) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...init });
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status})`);
-  }
-  return response.json() as Promise<T>;
-}
-
 // ── Root ──────────────────────────────────────────────────────────────────────
 
 export default function VoiceCall() {
   const [stage, setStage] = useState<Stage>("idle");
   const [session, setSession] = useState<SessionData>(HARDCODED_SESSION);
+  const [callingPhone, setCallingPhone] = useState("");
+  const [skipPost, setSkipPost] = useState(false);
   const router = useRouter();
 
   return (
@@ -116,26 +124,30 @@ export default function VoiceCall() {
         {stage === "idle" && (
           <IdleView
             key="idle"
-            onStartRecording={() => setStage("recording")}
+            onCallRequest={(phone) => {
+              setCallingPhone(phone);
+              setSkipPost(true);
+              setStage("calling");
+            }}
             onFormSubmit={(data) => {
               setSession(data);
+              setSkipPost(false);
               setStage("analyzing");
             }}
           />
         )}
-        {stage === "recording" && (
-          <RecordingView
-            key="recording"
-            onStop={() => {
-              setSession(HARDCODED_SESSION);
-              setStage("analyzing");
-            }}
+        {stage === "calling" && (
+          <CallingView
+            key="calling"
+            phone={callingPhone}
+            onComplete={() => setStage("analyzing")}
           />
         )}
         {stage === "analyzing" && (
           <AnalyzingView
             key="analyzing"
             session={session}
+            skipPost={skipPost}
             onDone={() => router.push("/results")}
           />
         )}
@@ -147,24 +159,21 @@ export default function VoiceCall() {
 // ── Idle view ─────────────────────────────────────────────────────────────────
 
 function IdleView({
-  onStartRecording,
+  onCallRequest,
   onFormSubmit,
 }: {
-  onStartRecording: () => void;
+  onCallRequest: (phone: string) => void;
   onFormSubmit: (data: SessionData) => void;
 }) {
+  const [phone, setPhone] = useState("");
+  const [callError, setCallError] = useState("");
+  const [calling, setCalling] = useState(false);
+
   const [form, setForm] = useState({
-    name: "",
-    locality: "",
-    workplace: "",
-    budgetMin: "",
-    budgetMax: "",
-    bhk: "",
-    furnishing: "",
-    lifestyle: "",
-    amenities: "",
-    dealBreakers: "",
-    commute: "",
+    name: "", locality: "", workplace: "",
+    budgetMin: "", budgetMax: "",
+    bhk: "", furnishing: "", lifestyle: "",
+    amenities: "", dealBreakers: "", commute: "",
   });
 
   const set =
@@ -186,6 +195,37 @@ function IdleView({
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >,
   ) => (e.target.style.borderColor = "rgba(26,23,20,0.13)");
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits, max 10
+    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+    setCallError("");
+  };
+
+  const handleCallRequest = async () => {
+    if (phone.length < 10) {
+      setCallError("Enter a valid 10-digit number");
+      return;
+    }
+    setCalling(true);
+    setCallError("");
+    const fullPhone = `+91${phone}`;
+    try {
+      const resp = await fetch(`${BACKEND_URL}/call/initiate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({})) as { message?: string };
+        throw new Error(data.message ?? "Call initiation failed");
+      }
+      onCallRequest(fullPhone);
+    } catch (err) {
+      setCallError(err instanceof Error ? err.message : "Could not place call. Try again.");
+      setCalling(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,45 +257,84 @@ function IdleView({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -16 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full max-w-lg mx-auto px-6 pt-32 pb-20 space-y-14"
+      className="w-full max-w-lg mx-auto px-6 pt-32 pb-20 space-y-12"
     >
-      {/* Mic section */}
-      <div className="flex flex-col items-center gap-7 text-center">
-        <p
-          style={{ fontFamily: "var(--font-serif)" }}
-          className="italic text-[#d6a63f] text-xl"
-        >
-          Talk to Ghosla
-        </p>
-        <motion.button
-          type="button"
-          onClick={onStartRecording}
-          whileHover={{ scale: 1.06 }}
-          whileTap={{ scale: 0.94 }}
-          className="relative flex items-center justify-center rounded-full"
+      {/* ── Phone call section ── */}
+      <div className="space-y-5">
+        <div
+          className="rounded-2xl p-5 space-y-4"
           style={{
-            width: 128,
-            height: 128,
-            background: "linear-gradient(135deg, #d6a63f 0%, #f4cf77 100%)",
-            boxShadow: "0 20px 56px -16px rgba(214,166,63,0.65)",
+            backgroundColor: "rgba(255,255,255,0.86)",
+            border: "1px solid rgba(26,23,20,0.14)",
           }}
         >
-          <MicIcon size={44} color="#1a1714" />
-        </motion.button>
-        <div className="space-y-1.5">
-          <p
-            style={{ fontFamily: "var(--font-display)" }}
-            className="font-bold text-lg tracking-tight"
+          <div className="text-center space-y-1.5 pb-1">
+            <p
+              style={{ fontFamily: "var(--font-serif)" }}
+              className="italic text-[#9b6d0a] text-2xl"
+            >
+              Talk to Sara
+            </p>
+            <p
+              style={{ fontFamily: "var(--font-display)" }}
+              className="font-bold text-2xl tracking-tight text-[#1a1714]"
+            >
+              Get a call from our AI agent
+            </p>
+            <p className="text-base text-[#4f4a44] leading-relaxed">
+              Sara will ask you 6 quick questions — takes about 2 minutes.
+            </p>
+          </div>
+
+          {/* Phone input */}
+          <div className="flex items-stretch gap-2">
+            <div
+              className="flex items-center gap-2 px-4 rounded-xl shrink-0"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.82)",
+                border: "1px solid rgba(26,23,20,0.13)",
+              }}
+            >
+              <span className="text-base">🇮🇳</span>
+              <span className="text-sm font-semibold text-[#6b635a]">+91</span>
+            </div>
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="98765 43210"
+              value={phone}
+              onChange={handlePhoneChange}
+              style={{
+                ...inputBase,
+                letterSpacing: "0.06em",
+                fontSize: 16,
+              }}
+            />
+          </div>
+
+          {callError && (
+            <p className="text-xs text-red-500 font-semibold">{callError}</p>
+          )}
+
+          <motion.button
+            type="button"
+            onClick={handleCallRequest}
+            disabled={calling || phone.length < 10}
+            whileHover={phone.length >= 10 ? { scale: 1.01 } : {}}
+            whileTap={phone.length >= 10 ? { scale: 0.98 } : {}}
+            className="w-full py-4 rounded-xl font-bold text-sm transition-opacity disabled:opacity-40"
+            style={{
+              background: "linear-gradient(120deg, #d6a63f 0%, #f4cf77 100%)",
+              color: "#1a1714",
+              boxShadow: "0 8px 28px -8px rgba(214,166,63,0.55)",
+            }}
           >
-            Tap the mic to start talking
-          </p>
-          <p className="text-sm text-[#6b635a] leading-relaxed">
-            Just speak naturally — Ghosla will find your perfect home.
-          </p>
+            {calling ? "Placing call…" : "Get a call from Sara →"}
+          </motion.button>
         </div>
       </div>
 
-      {/* Divider */}
+      {/* ── Divider ── */}
       <div className="flex items-center gap-4">
         <div
           className="flex-1 h-px"
@@ -265,7 +344,7 @@ function IdleView({
           className="text-[11px] font-bold uppercase tracking-[0.22em]"
           style={{ color: "#9ca3af" }}
         >
-          or
+          or fill the form
         </span>
         <div
           className="flex-1 h-px"
@@ -273,20 +352,8 @@ function IdleView({
         />
       </div>
 
-      {/* Form */}
+      {/* ── Form ── */}
       <div className="space-y-7">
-        <div className="text-center space-y-1.5">
-          <p
-            style={{ fontFamily: "var(--font-display)" }}
-            className="font-bold text-lg tracking-tight"
-          >
-            Fill in your requirements
-          </p>
-          <p className="text-sm text-[#6b635a]">
-            Not a fan of talking? Tell us what you need.
-          </p>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name + Locality */}
           <div className="grid grid-cols-2 gap-3">
@@ -496,15 +563,89 @@ function IdleView({
   );
 }
 
-// ── Recording view ─────────────────────────────────────────────────────────────
+// ── Calling view ──────────────────────────────────────────────────────────────
 
-function RecordingView({ onStop }: { onStop: () => void }) {
-  const [time, setTime] = useState(0);
+function CallingView({
+  phone,
+  onComplete,
+}: {
+  phone: string;
+  onComplete: () => void;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  const [callStatus, setCallStatus] = useState<string>("calling");
+  const doneRef = useRef(false);
+  const idleStreakRef = useRef(0);
+
+  const statusLabel = {
+    calling: "Calling you…",
+    on_call: "You're talking to Sara",
+    processing: "Extracting your requirements…",
+    complete: "Done! Loading results…",
+    failed: "Processing your search…",
+    idle: "Connecting your call…",
+  }[callStatus] ?? "Calling you…";
+
+  const statusSub = {
+    calling: "Keep your phone nearby — Sara will call in a moment.",
+    on_call: "Sara will ask you 6 quick questions about your ideal home.",
+    processing: "Sara finished the call — analysing what you need.",
+    complete: "Handing off to our AI research engine.",
+    failed: "Using your preferences to search for the best homes.",
+    idle: "Starting the voice session and preparing your search.",
+  }[callStatus] ?? "";
 
   useEffect(() => {
-    const t = setInterval(() => setTime((s) => s + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
+    const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
+
+    const poll = setInterval(async () => {
+      try {
+        const resp = await fetch(`${BACKEND_URL}/call/status`);
+        const data = (await resp.json().catch(() => ({}))) as { status?: string };
+        const status = data.status ?? "calling";
+        setCallStatus(status);
+
+        if (status === "idle") {
+          idleStreakRef.current += 1;
+          if (idleStreakRef.current >= 3 && !doneRef.current) {
+            doneRef.current = true;
+            setCallStatus("failed");
+            setTimeout(() => onComplete(), 1200);
+            return;
+          }
+        } else {
+          idleStreakRef.current = 0;
+        }
+
+        if (
+          (status === "complete" || status === "failed") &&
+          !doneRef.current
+        ) {
+          doneRef.current = true;
+          // Small pause so the user sees the status before transitioning
+          setTimeout(() => onComplete(), 1200);
+        }
+      } catch {}
+    }, 2000);
+
+    const hardTimeout = setTimeout(() => {
+      if (!doneRef.current) {
+        doneRef.current = true;
+        setCallStatus("failed");
+        onComplete();
+      }
+    }, 180000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(poll);
+      clearTimeout(hardTimeout);
+    };
+  }, [onComplete]);
+
+  const isOnCall = callStatus === "on_call";
+  const isDone = callStatus === "complete" || callStatus === "failed";
+  const isProcessing = callStatus === "processing";
 
   return (
     <motion.div
@@ -520,130 +661,153 @@ function RecordingView({ onStop }: { onStop: () => void }) {
       >
         Ghosla
       </p>
+
       <div className="space-y-2">
         <h2
           style={{ fontFamily: "var(--font-display)" }}
           className="text-3xl font-bold tracking-tight"
         >
-          Listening…
+          {statusLabel}
         </h2>
-        <p className="text-sm text-[#6b635a]">
-          Speak your requirements — locality, budget, BHK, preferences
+        <p className="text-sm text-[#6b635a] max-w-xs leading-relaxed">
+          {statusSub}
         </p>
       </div>
 
+      {/* Phone number pill */}
+      <div
+        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold"
+        style={{
+          backgroundColor: "rgba(255,255,255,0.72)",
+          border: "1px solid rgba(26,23,20,0.10)",
+        }}
+      >
+        <span>📞</span>
+        <span className="text-[#1a1714]">{phone}</span>
+      </div>
+
+      {/* Animation */}
       <div className="relative flex items-center justify-center">
+        {/* Outer pulse rings — only when ringing or on call */}
+        {!isDone && !isProcessing && (
+          <>
+            <motion.div
+              className="absolute rounded-full"
+              style={{
+                width: 220,
+                height: 220,
+                backgroundColor: isOnCall
+                  ? "rgba(16,185,129,0.10)"
+                  : "rgba(214,166,63,0.12)",
+              }}
+              animate={{ scale: [1, 1.45, 1], opacity: [0.8, 0, 0.8] }}
+              transition={{
+                duration: 2.6,
+                repeat: Number.POSITIVE_INFINITY,
+                ease: "easeInOut",
+              }}
+            />
+            <motion.div
+              className="absolute rounded-full"
+              style={{
+                width: 220,
+                height: 220,
+                backgroundColor: isOnCall
+                  ? "rgba(16,185,129,0.14)"
+                  : "rgba(214,166,63,0.16)",
+              }}
+              animate={{ scale: [1, 1.22, 1], opacity: [0.7, 0, 0.7] }}
+              transition={{
+                duration: 2.6,
+                repeat: Number.POSITIVE_INFINITY,
+                ease: "easeInOut",
+                delay: 0.55,
+              }}
+            />
+          </>
+        )}
+
+        {/* Central circle */}
         <motion.div
-          className="absolute rounded-full"
-          style={{
-            width: 200,
-            height: 200,
-            backgroundColor: "rgba(214,166,63,0.12)",
-          }}
-          animate={{ scale: [1, 1.4, 1], opacity: [0.8, 0, 0.8] }}
-          transition={{
-            duration: 2.4,
-            repeat: Number.POSITIVE_INFINITY,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute rounded-full"
-          style={{
-            width: 200,
-            height: 200,
-            backgroundColor: "rgba(214,166,63,0.16)",
-          }}
-          animate={{ scale: [1, 1.22, 1], opacity: [0.7, 0, 0.7] }}
-          transition={{
-            duration: 2.4,
-            repeat: Number.POSITIVE_INFINITY,
-            ease: "easeInOut",
-            delay: 0.5,
-          }}
-        />
-        <div
           className="relative z-10 flex items-center justify-center rounded-full"
           style={{
             width: 120,
             height: 120,
-            background: "linear-gradient(135deg, #d6a63f 0%, #f4cf77 100%)",
-            boxShadow: "0 20px 56px -12px rgba(214,166,63,0.60)",
+            background: isDone
+              ? "linear-gradient(135deg, #10b981 0%, #34d399 100%)"
+              : isProcessing
+              ? "linear-gradient(135deg, #6366f1 0%, #a78bfa 100%)"
+              : "linear-gradient(135deg, #d6a63f 0%, #f4cf77 100%)",
+            boxShadow: isDone
+              ? "0 20px 56px -12px rgba(16,185,129,0.55)"
+              : isProcessing
+              ? "0 20px 56px -12px rgba(99,102,241,0.50)"
+              : "0 20px 56px -12px rgba(214,166,63,0.60)",
           }}
+          animate={
+            isOnCall
+              ? { scale: [1, 1.06, 1] }
+              : {}
+          }
+          transition={{ duration: 1.8, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
         >
-          <MicIcon size={42} color="#1a1714" />
-          <motion.div
-            className="absolute top-3 right-3 rounded-full"
-            style={{ width: 11, height: 11, backgroundColor: "#ef4444" }}
-            animate={{ opacity: [1, 0.1, 1] }}
-            transition={{
-              duration: 1.1,
-              repeat: Number.POSITIVE_INFINITY,
-              ease: "easeInOut",
-            }}
-          />
+          {isDone ? (
+            <span className="text-white text-3xl">✓</span>
+          ) : isProcessing ? (
+            <motion.div
+              className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+            />
+          ) : (
+            <PhoneIcon size={44} color="#1a1714" />
+          )}
+        </motion.div>
+      </div>
+
+      {/* Wave bars — shown while on call */}
+      {isOnCall && (
+        <div className="flex items-center gap-[3px]" style={{ height: 52 }}>
+          {WAVE_HEIGHTS.map((h, i) => (
+            <motion.div
+              key={i}
+              className="rounded-full"
+              style={{ width: 3, backgroundColor: "#d6a63f" }}
+              animate={{ height: [4, h, 4] }}
+              transition={{
+                duration: 0.65 + i * 0.015,
+                repeat: Number.POSITIVE_INFINITY,
+                delay: i * 0.04,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
         </div>
-      </div>
+      )}
 
-      <div className="flex items-center gap-[3px]" style={{ height: 52 }}>
-        {WAVE_HEIGHTS.map((h, i) => (
-          <motion.div
-            key={i}
-            className="rounded-full"
-            style={{ width: 3, backgroundColor: "#d6a63f" }}
-            animate={{ height: [4, h, 4] }}
-            transition={{
-              duration: 0.65 + i * 0.015,
-              repeat: Number.POSITIVE_INFINITY,
-              delay: i * 0.04,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </div>
-
+      {/* Timer */}
       <p className="font-mono text-sm text-[#6b635a] tracking-widest">
-        {formatTime(time)}
+        {formatTime(elapsed)}
       </p>
 
-      <motion.button
-        type="button"
-        onClick={onStop}
-        whileHover={{ scale: 1.03 }}
-        whileTap={{ scale: 0.97 }}
-        className="px-9 py-4 rounded-full font-bold text-sm"
-        style={{
-          backgroundColor: "#1a1714",
-          color: "#f7f4ef",
-          boxShadow: "0 8px 24px -8px rgba(26,23,20,0.4)",
-        }}
-      >
-        Stop &amp; Search
-      </motion.button>
+      <p className="text-xs text-[#9ca3af] max-w-xs">
+        {isProcessing || isDone
+          ? "Our AI is reading your preferences and finding matches."
+          : "Do not close this page — you'll see your results after the call."}
+      </p>
     </motion.div>
   );
 }
 
 // ── Analyzing view ─────────────────────────────────────────────────────────────
 
-const PLATFORMS = [
-  { name: "NoBroker", logo: "/nobroker.png", color: "#e11d48", delay: 0 },
-  { name: "99acres", logo: "/99acres.png", color: "#2563eb", delay: 5 },
-  {
-    name: "MagicBricks",
-    logo: "/magicbricks.png",
-    color: "#7c3aed",
-    delay: 10,
-  },
-];
-
-type PlatformState = "waiting" | "active" | "done";
-
 function AnalyzingView({
   session,
+  skipPost,
   onDone,
 }: {
   session: SessionData;
+  skipPost: boolean;
   onDone: () => void;
 }) {
   const [logs, setLogs] = useState<string[]>([]);
@@ -652,23 +816,16 @@ function AnalyzingView({
   const logsEndRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
 
-  // Platform states based on elapsed time
-  const getPlatformState = (delay: number): PlatformState => {
-    if (elapsed < delay) return "waiting";
-    if (aiDone) return "done";
-    return "active";
-  };
-
-  // Fake progress: 0→85% over 90s, then jump to 100 on done
-  const progress = aiDone ? 100 : Math.min(85, (elapsed / 90) * 85);
-
   useEffect(() => {
-    // POST session to backend
-    fetch(`${BACKEND_URL}/session/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(session),
-    }).catch(() => {});
+    // Only POST session if not coming from the voice call flow
+    // (outbound.py already POSTed session/complete after the call)
+    if (!skipPost) {
+      fetch(`${BACKEND_URL}/session/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(session),
+      }).catch(() => {});
+    }
 
     // Timer
     const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
@@ -711,13 +868,21 @@ function AnalyzingView({
       } catch {}
     }, 1500);
 
+    const hardTimeout = setTimeout(() => {
+      if (!doneRef.current) {
+        doneRef.current = true;
+        onDone();
+      }
+    }, 240000);
+
     return () => {
       clearInterval(timer);
       clearInterval(resultsInterval);
       clearInterval(statusInterval);
       clearInterval(logInterval);
+      clearTimeout(hardTimeout);
     };
-  }, [onDone, session]);
+  }, [onDone, session, skipPost]);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -752,81 +917,7 @@ function AnalyzingView({
         </p>
       </div>
 
-      {/* Platform cards */}
-      <div className="grid grid-cols-3 gap-4">
-        {PLATFORMS.map((p) => {
-          const state = getPlatformState(p.delay);
-          return (
-            <PlatformCard
-              key={p.name}
-              platform={p}
-              state={state}
-            />
-          );
-        })}
-      </div>
-
-      {/* AI research bar */}
-      <div
-        className="rounded-2xl p-5 space-y-3"
-        style={{
-          backgroundColor: "rgba(255,255,255,0.72)",
-          border: "1px solid rgba(26,23,20,0.10)",
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <motion.div
-              className="w-5 h-5 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: aiDone ? "#10b981" : "#d6a63f" }}
-              animate={aiDone ? {} : { scale: [1, 1.2, 1] }}
-              transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
-            >
-              {aiDone ? (
-                <span className="text-white text-[10px]">✓</span>
-              ) : (
-                <motion.div
-                  className="w-2 h-2 rounded-full bg-white"
-                  animate={{ opacity: [1, 0.3, 1] }}
-                  transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
-                />
-              )}
-            </motion.div>
-            <span className="text-sm font-semibold text-[#1a1714]">
-              AI Research Engine
-            </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#d6a63f] bg-[#d6a63f]/10 px-2 py-0.5 rounded-full">
-              Powered by Exa
-            </span>
-          </div>
-          <span className="text-xs text-[#9ca3af] font-mono">
-            {Math.round(progress)}%
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div
-          className="w-full h-1.5 rounded-full overflow-hidden"
-          style={{ backgroundColor: "rgba(26,23,20,0.1)" }}
-        >
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: "linear-gradient(90deg, #d6a63f, #f4cf77)" }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
-        </div>
-
-        <p className="text-xs text-[#6b635a]">
-          {aiDone
-            ? "Research complete — 6 AI-matched properties found"
-            : elapsed < 15
-              ? "Querying property databases and locality intelligence…"
-              : elapsed < 40
-                ? "Analysing AQI, commute times, and neighbourhood data…"
-                : "Cross-referencing results and computing match scores…"}
-        </p>
-      </div>
+      <RotatingScrapeShowcase elapsed={elapsed} aiDone={aiDone} />
 
       {/* Live log feed */}
       <div
@@ -874,113 +965,99 @@ function AnalyzingView({
       </div>
 
       <p className="text-center text-xs text-[#9ca3af]">
-        This typically takes 30–90 seconds. Sit back.
+        Sit back — we&apos;re lining up your best options.
       </p>
     </motion.div>
   );
 }
 
-// ── Platform card ──────────────────────────────────────────────────────────────
+// ── Rotating scrape showcase ───────────────────────────────────────────────────
 
-function PlatformCard({
-  platform,
-  state,
+function RotatingScrapeShowcase({
+  elapsed,
+  aiDone,
 }: {
-  platform: (typeof PLATFORMS)[number];
-  state: PlatformState;
+  elapsed: number;
+  aiDone: boolean;
 }) {
-  const isActive = state === "active";
-  const isDone = state === "done";
-  const isWaiting = state === "waiting";
-
-  const cardStyle: React.CSSProperties = {
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.85)",
-    border: isDone
-      ? "1.5px solid #10b981"
-      : isActive
-        ? `1.5px solid ${platform.color}`
-        : "1.5px solid rgba(26,23,20,0.10)",
-    boxShadow: isDone
-      ? "0 0 20px rgba(16,185,129,0.18)"
-      : isActive
-        ? `0 0 24px ${platform.color}30`
-        : "none",
-    transition: "all 0.4s ease",
-    opacity: isWaiting ? 0.55 : 1,
-  };
-
-  const statusText = isDone
-    ? "Listings found"
-    : isActive
-      ? "Searching…"
-      : "Waiting…";
-
-  const statusColor = isDone
-    ? "#10b981"
-    : isActive
-      ? platform.color
-      : "#9ca3af";
+  const activeIndex = aiDone ? PLATFORMS.length - 1 : Math.floor(elapsed / 4) % PLATFORMS.length;
+  const active = PLATFORMS[activeIndex];
+  const creativeText = aiDone
+    ? "Perfect — your personalized shortlist is ready."
+    : SCRAPING_LINES[Math.floor(elapsed / 5) % SCRAPING_LINES.length];
 
   return (
     <div
-      className="p-4 flex flex-col items-center gap-3 text-center"
-      style={cardStyle}
+      className="rounded-2xl p-6 text-center space-y-5 relative overflow-hidden"
+      style={{
+        backgroundColor: "rgba(255,255,255,0.82)",
+        border: "1px solid rgba(26,23,20,0.12)",
+      }}
     >
-      {/* Logo */}
-      <div className="relative w-16 h-10 flex items-center justify-center">
-        <img
-          src={platform.logo}
-          alt={platform.name}
-          className="max-w-full max-h-full object-contain"
-          style={{
-            filter: isWaiting ? "grayscale(0.6)" : "none",
-            transition: "filter 0.4s",
-          }}
-        />
-        {isDone && (
+      <motion.div
+        className="absolute -top-10 -right-8 w-28 h-28 rounded-full"
+        style={{ backgroundColor: "rgba(214,166,63,0.14)" }}
+        animate={{ scale: [1, 1.25, 1], opacity: [0.5, 0.2, 0.5] }}
+        transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute -bottom-14 -left-10 w-32 h-32 rounded-full"
+        style={{ backgroundColor: "rgba(214,166,63,0.12)" }}
+        animate={{ scale: [1, 1.2, 1], opacity: [0.45, 0.15, 0.45] }}
+        transition={{ duration: 3.4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+      />
+
+      <div className="relative h-52 flex items-center justify-center">
+        <AnimatePresence mode="wait">
           <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"
+            key={active.name}
+            initial={{ opacity: 0, scale: 0.88, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.08, y: -10 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full h-full flex flex-col items-center justify-center gap-4"
           >
-            <span className="text-white text-[9px] font-bold">✓</span>
+            <motion.div
+              className="w-36 h-36 rounded-3xl flex items-center justify-center"
+              style={{
+                backgroundColor: `${active.color}18`,
+                border: `1px solid ${active.color}44`,
+                boxShadow: `0 10px 30px ${active.color}30`,
+              }}
+              animate={aiDone ? {} : { rotate: [0, 1.2, -1.2, 0], scale: [1, 1.04, 1] }}
+              transition={{ duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={active.logo} alt={active.name} className="w-24 h-24 object-contain" />
+            </motion.div>
+            <motion.p
+              className="text-sm font-bold"
+              style={{ color: active.color }}
+              animate={aiDone ? {} : { opacity: [0.45, 1, 0.45] }}
+              transition={{ duration: 1.2, repeat: Number.POSITIVE_INFINITY }}
+            >
+              Scraping {active.name}…
+            </motion.p>
           </motion.div>
-        )}
+        </AnimatePresence>
       </div>
 
-      {/* Status dot + text */}
-      <div className="flex items-center gap-1.5">
-        {isActive && (
-          <motion.div
-            className="w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ backgroundColor: platform.color }}
-            animate={{ opacity: [1, 0.2, 1] }}
-            transition={{ duration: 0.9, repeat: Number.POSITIVE_INFINITY }}
+      <div className="flex items-center justify-center gap-2">
+        {PLATFORMS.map((platform, i) => (
+          <motion.span
+            key={platform.name}
+            className="h-1.5 rounded-full"
+            style={{
+              width: i === activeIndex ? 30 : 10,
+              backgroundColor: i === activeIndex ? platform.color : "rgba(26,23,20,0.16)",
+            }}
+            animate={i === activeIndex && !aiDone ? { opacity: [0.55, 1, 0.55] } : {}}
+            transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
           />
-        )}
-        <span
-          className="text-[11px] font-semibold"
-          style={{ color: statusColor }}
-        >
-          {statusText}
-        </span>
+        ))}
       </div>
 
-      {/* Mini progress bar when active */}
-      {isActive && (
-        <div
-          className="w-full h-0.5 rounded-full overflow-hidden"
-          style={{ backgroundColor: "rgba(26,23,20,0.08)" }}
-        >
-          <motion.div
-            className="h-full rounded-full"
-            style={{ backgroundColor: platform.color }}
-            animate={{ width: ["0%", "90%"] }}
-            transition={{ duration: 80, ease: "linear" }}
-          />
-        </div>
-      )}
+      <p className="text-sm text-[#5a544d] leading-relaxed">{creativeText}</p>
     </div>
   );
 }
@@ -997,13 +1074,7 @@ function logColor(line: string): string {
   return "text-[#6b635a]";
 }
 
-function MicIcon({
-  size = 24,
-  color = "currentColor",
-}: {
-  size?: number;
-  color?: string;
-}) {
+function PhoneIcon({ size = 24, color = "currentColor" }: { size?: number; color?: string }) {
   return (
     <svg
       width={size}
@@ -1015,10 +1086,7 @@ function MicIcon({
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-      <line x1="12" y1="19" x2="12" y2="23" />
-      <line x1="8" y1="23" x2="16" y2="23" />
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.36 2 2 0 0 1 3.61 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.09a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }
