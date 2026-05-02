@@ -1,9 +1,9 @@
 """
 Theater automation scripts — one coroutine per property site.
 
-Uses browser-use Agent (headless=False) + ChatOpenAI gpt-4o-mini.
-Each function opens a visible browser window, runs the AI agent against
-a session-aware search task, and logs every step to theater_log.
+Uses browser-use Agent (headless=False) + ChatOpenAI gpt-5.4-2026-03-05.
+Each site opens in a 1/3-screen window at a fixed position so all 3
+are visible side-by-side simultaneously.
 
 Import surface:
     run_nobroker(session)
@@ -23,8 +23,24 @@ if _BROWSER_USE_DIR not in sys.path:
 
 from browser_use import Agent, ChatOpenAI
 from browser_use.browser import BrowserProfile, BrowserSession
+from browser_use.browser.profile import ViewportSize
 
 from automations.log_store import append_log
+
+# ── Window layout — 3 side-by-side panels ────────────────────────────────────
+# Assumes a 1440px wide screen. Each window = 480x900, flush to top.
+# Adjust SCREEN_WIDTH if your display is different (e.g. 1920).
+SCREEN_WIDTH = 1440
+SCREEN_HEIGHT = 900
+WIN_WIDTH = SCREEN_WIDTH // 3   # 480
+WIN_HEIGHT = SCREEN_HEIGHT
+
+# (x_position, y_position) for each site window
+_WINDOW_POSITIONS = {
+    "NoBroker":   (0,             0),
+    "99Acres":    (WIN_WIDTH,     0),
+    "MagicBricks":(WIN_WIDTH * 2, 0),
+}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -73,12 +89,7 @@ def _build_task(site_url: str, bhk: str, locality: str, budget: str) -> str:
 
 
 def _make_step_callback(site_name: str):
-    """
-    Returns an async on_step_end hook that logs each agent step.
-
-    Args:
-        site_name: Label for log lines, e.g. "NoBroker".
-    """
+    """Returns an async on_step_end hook that logs each agent step."""
     async def on_step_end(agent: Agent) -> None:
         step = agent.state.n_steps
         goal = ""
@@ -92,21 +103,25 @@ def _make_step_callback(site_name: str):
     return on_step_end
 
 
-async def _run_site(site_name: str, task: str, max_steps: int = 20) -> None:
+async def _run_site(site_name: str, task: str, max_steps: int = 25) -> None:
     """
-    Shared runner — opens a visible browser, runs the agent, closes when done.
+    Open a 1/3-screen browser window at the correct position and run the agent.
 
     Args:
-        site_name: Label used in logs.
+        site_name: Label used in logs and to look up window position.
         task: Full natural language instruction for the agent.
         max_steps: Hard cap on agent steps to control cost.
     """
     llm = ChatOpenAI(model="gpt-5.4-2026-03-05")
 
+    x, y = _WINDOW_POSITIONS[site_name]
+
     browser_session = BrowserSession(
         browser_profile=BrowserProfile(
-            headless=False,   # visible browser — the theater effect
-            keep_alive=False, # auto-close when agent finishes
+            headless=False,
+            keep_alive=False,
+            window_size=ViewportSize(width=WIN_WIDTH, height=WIN_HEIGHT),
+            window_position=ViewportSize(width=x, height=y),
         )
     )
 

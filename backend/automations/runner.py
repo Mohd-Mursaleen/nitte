@@ -4,7 +4,7 @@ from typing import Any
 from automations.log_store import append_log
 from automations.scripts.theater import run_nobroker, run_99acres, run_magicbricks
 
-THEATER_TIMEOUT = 60  # hard cap — all browsers force-close after this many seconds
+THEATER_TIMEOUT = 120  # hard cap — all browsers force-close after this many seconds
 STAGGER_DELAY = 5     # seconds between each window opening
 
 
