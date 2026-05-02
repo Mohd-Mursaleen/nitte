@@ -6,24 +6,28 @@ import os
 import platform
 from playwright.async_api import Locator
 
+# Path to the real installed Google Chrome binary.
+# Override via CHROME_BINARY_PATH env var if Chrome is in a non-standard location.
+CHROME_BINARY = os.getenv(
+    "CHROME_BINARY_PATH",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+)
+
 
 def get_chrome_profile() -> str:
     """
     Returns the path to your real Chrome user profile.
-    Edit CUSTOM_PROFILE_PATH if your profile is in a non-standard location.
+    Override via CHROME_PROFILE_PATH env var if not at the OS default.
     """
-    CUSTOM_PROFILE_PATH = os.getenv("CHROME_PROFILE_PATH", "")
-    if CUSTOM_PROFILE_PATH:
-        return CUSTOM_PROFILE_PATH
+    custom = os.getenv("CHROME_PROFILE_PATH", "")
+    if custom:
+        return custom
 
     system = platform.system()
     home = os.path.expanduser("~")
 
-    if system == "Darwin":  # macOS
-        return os.path.join(
-            home,
-            "Library/Application Support/Google/Chrome/Default",
-        )
+    if system == "Darwin":
+        return os.path.join(home, "Library/Application Support/Google/Chrome/Default")
     elif system == "Linux":
         return os.path.join(home, ".config/google-chrome/Default")
     elif system == "Windows":
@@ -38,7 +42,7 @@ def get_chrome_profile() -> str:
 async def slow_type(locator: Locator, text: str, delay_ms: int = 80):
     """
     Types text character by character with a delay.
-    Looks like a human typing — much more convincing for demos.
+    Looks like a human typing — convincing for demos.
     """
     import asyncio
     for char in text:

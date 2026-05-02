@@ -47,20 +47,29 @@ def main():
     resp.raise_for_status()
     print("✅ Session saved. Automations triggered. Watching status...")
 
-    # ── Poll until complete ───────────────────────────────────────────────────
+    # ── Poll status + stream live logs ───────────────────────────────────────
+    shown_logs = 0
     elapsed = 0
+
     while elapsed < TIMEOUT_SECONDS:
         status_resp = requests.get(f"{BASE_URL}/theater/status")
         status_resp.raise_for_status()
         status = status_resp.json().get("status", "unknown")
 
+        logs_resp = requests.get(f"{BASE_URL}/theater/logs")
+        logs_resp.raise_for_status()
+        all_logs = logs_resp.json().get("logs", [])
+        for log_line in all_logs[shown_logs:]:
+            print(f"  📋 {log_line}")
+        shown_logs = len(all_logs)
+
         if status == "complete":
             print(f"✅ Status: {status}")
             break
-        else:
-            print(f"⏳ Status: {status}...")
-            time.sleep(POLL_INTERVAL_SECONDS)
-            elapsed += POLL_INTERVAL_SECONDS
+
+        print(f"⏳ Status: {status}...")
+        time.sleep(POLL_INTERVAL_SECONDS)
+        elapsed += POLL_INTERVAL_SECONDS
     else:
         print(f"⚠️  Timed out after {TIMEOUT_SECONDS}s — status never reached complete.")
         return

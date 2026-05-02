@@ -4,7 +4,7 @@ FastAPI server that:
 1. Receives session data from Pipecat when conversation ends
 2. Triggers parallel browser automations (the theater)
 3. Serves hardcoded results with dynamic match scores
-4. Exposes status endpoints for the frontend to poll
+4. Exposes status and live log endpoints for the frontend to poll
 """
 
 import asyncio
@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+from automations.log_store import clear_logs, get_logs
 from automations.runner import AutomationRunner
 from results.engine import compute_results
 from session.store import SessionStore
@@ -80,9 +81,10 @@ async def health():
 async def session_complete(data: SessionData):
     """
     Called by Pipecat bot when Nest says the final line.
-    Saves session data and triggers all automations in parallel.
+    Saves session data, clears old logs, and triggers all automations in parallel.
     """
     session_store.save(data.model_dump())
+    clear_logs()
     asyncio.create_task(automation_runner.run_all(data.model_dump()))
     return {"status": "started"}
 
@@ -91,9 +93,18 @@ async def session_complete(data: SessionData):
 async def theater_status():
     """
     Frontend polls this to know when the theater is done.
-    Returns: pending | running | complete
+    Returns: idle | running | complete
     """
     return {"status": automation_runner.status}
+
+
+@app.get("/theater/logs")
+async def get_theater_logs():
+    """
+    Frontend polls this every 1 second to display live activity logs.
+    Returns all logs collected so far from all 3 browser automations.
+    """
+    return {"logs": get_logs()}
 
 
 @app.get("/results")
@@ -104,7 +115,6 @@ async def get_results():
     """
     session = session_store.get()
     if not session:
-        # Return default results if no session (for dev/testing)
         session = {}
     results = compute_results(session)
     return {"results": results}
@@ -115,4 +125,5 @@ async def reset_theater():
     """Dev endpoint — reset automation state for re-running."""
     automation_runner.reset()
     session_store.clear()
+    clear_logs()
     return {"status": "reset"}
