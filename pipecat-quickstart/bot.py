@@ -41,6 +41,8 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
+from pipecat.audio.filters.rnnoise_filter import RNNoiseFilter
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
@@ -52,6 +54,9 @@ from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
+from pipecat.turns.user_stop import TurnAnalyzerUserTurnStopStrategy
+from pipecat.turns.user_start import VADUserTurnStartStrategy, TranscriptionUserTurnStartStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 logger.info("✅ All components loaded successfully!")
 
@@ -177,7 +182,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     llm = OpenAILLMService(
         api_key=os.getenv("OPENAI_API_KEY"),
         settings=OpenAILLMService.Settings(
-            model="gpt-4o-mini",
+            model="gpt-4.1-2025-04-14",
             system_instruction=SYSTEM_PROMPT,
         ),
     )
@@ -185,7 +190,13 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     context = LLMContext()
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
-        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
+        user_params=LLMUserAggregatorParams(
+            vad_analyzer=SileroVADAnalyzer(),  # VAD for speech start detection
+            user_turn_strategies=UserTurnStrategies(
+                start=[VADUserTurnStartStrategy(), TranscriptionUserTurnStartStrategy()],
+                stop=[TurnAnalyzerUserTurnStopStrategy(turn_analyzer=LocalSmartTurnAnalyzerV3())],
+            ),
+        ),
     )
 
     pipeline = Pipeline(
@@ -239,6 +250,7 @@ async def bot(runner_args: RunnerArguments):
         "webrtc": lambda: TransportParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
+            audio_in_filter=RNNoiseFilter(),  # Neural noise suppression on mic input
         ),
     }
 
