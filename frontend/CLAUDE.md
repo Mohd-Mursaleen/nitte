@@ -18,7 +18,7 @@ No test suite configured.
 
 ## Architecture
 
-**TrueNest AI** — rental home finder. User describes requirements via voice, backend scrapes listings, results shown with locality intel.
+**Ghosla** — rental home finder. User describes requirements via voice, backend scrapes listings, results shown with locality intel.
 
 ### Routes
 

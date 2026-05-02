@@ -96,7 +96,7 @@ export default function ResultsPage() {
               style={{ fontFamily: "var(--font-display), sans-serif" }}
               className="text-xs font-bold uppercase tracking-[0.24em] text-[#c8a96e] block mb-0.5"
             >
-              Nest
+              Ghosla
             </span>
             <h1
               style={{ fontFamily: "var(--font-display), sans-serif" }}

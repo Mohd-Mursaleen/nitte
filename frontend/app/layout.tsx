@@ -22,7 +22,7 @@ const serifFont = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Nest — Find your perfect home",
+  title: "Ghosla — Find your perfect home",
   description:
     "Describe your ideal rental once. We search 99acres, NoBroker, and MagicBricks and return your best matches.",
   icons: {

@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 const GOLD = "#d6a63f";
 const GOLD_BRIGHT = "#f4cf77";
@@ -39,7 +39,7 @@ const steps = [
   },
   {
     num: "02",
-    title: "Nest searches everything",
+    title: "Ghosla searches everything",
     desc: "We scan every partner platform in parallel and normalize the results instantly.",
   },
   {
@@ -67,6 +67,16 @@ const profileExamples = [
   },
 ];
 
+const defaultCardFloat = {
+  rotateX: 0,
+  rotateY: 0,
+  scale: 1,
+  depthX: 0,
+  depthY: 0,
+  glowX: 50,
+  glowY: 50,
+};
+
 const lightBg: React.CSSProperties = {
   backgroundColor: "#e2ded7",
   backgroundImage: [
@@ -80,6 +90,8 @@ const lightBg: React.CSSProperties = {
 export default function Home() {
   const shouldReduceMotion = useReducedMotion();
   const [activeExample, setActiveExample] = useState(0);
+  const [cardFloat, setCardFloat] = useState(defaultCardFloat);
+  const resetFloatTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (shouldReduceMotion) return;
@@ -98,6 +110,48 @@ export default function Home() {
         transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
       };
 
+  const applyCardFloat = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    isClick: boolean
+  ) => {
+    if (shouldReduceMotion || event.pointerType === "touch") return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const xRatio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+    const yRatio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1);
+    const nx = xRatio - 0.5;
+    const ny = yRatio - 0.5;
+
+    const intensity = isClick ? 15 : 8;
+
+    setCardFloat({
+      rotateX: ny * intensity,
+      rotateY: -nx * intensity,
+      scale: isClick ? 1.02 : 1.01,
+      depthX: -nx * 20,
+      depthY: -ny * 20,
+      glowX: xRatio * 100,
+      glowY: yRatio * 100,
+    });
+
+    if (isClick) {
+      if (resetFloatTimeoutRef.current) {
+        window.clearTimeout(resetFloatTimeoutRef.current);
+      }
+      resetFloatTimeoutRef.current = window.setTimeout(() => {
+        setCardFloat(defaultCardFloat);
+      }, 850);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resetFloatTimeoutRef.current) {
+        window.clearTimeout(resetFloatTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="min-h-screen text-[17px] text-[#1a1714] md:text-[18px]" style={lightBg}>
       <header
@@ -113,7 +167,7 @@ export default function Home() {
             style={{ fontFamily: "var(--font-display)" }}
             className="text-xl font-bold tracking-tight transition-opacity hover:opacity-80 md:text-2xl"
           >
-            Nest
+            Ghosla
           </Link>
 
           <nav className="hidden items-center gap-2 rounded-full border border-[rgba(26,23,20,0.13)] bg-[rgba(255,255,255,0.46)] p-1 md:flex">
@@ -181,7 +235,7 @@ export default function Home() {
           </h1>
 
           <p className="max-w-xl text-lg leading-relaxed text-[#5e564d] md:text-xl">
-            Tell Nest your budget, locality, BHK, and non-negotiables. We search every partner
+            Tell Ghosla your budget, locality, BHK, and non-negotiables. We search every partner
             platform instantly and return the best-fit homes with locality intelligence.
           </p>
 
@@ -209,15 +263,51 @@ export default function Home() {
 
         <motion.div
           initial={shouldReduceMotion ? undefined : { opacity: 0, y: 24 }}
-          animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-          transition={shouldReduceMotion ? undefined : { duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-3xl border p-6 md:p-7"
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  opacity: 1,
+                  y: 0,
+                  rotateX: cardFloat.rotateX,
+                  rotateY: cardFloat.rotateY,
+                  scale: cardFloat.scale,
+                  x: cardFloat.depthX * 0.12,
+                  y: cardFloat.depthY * 0.12,
+                }
+          }
+          transition={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  opacity: { duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] },
+                  y: { type: "spring", stiffness: 180, damping: 20 },
+                  rotateX: { type: "spring", stiffness: 220, damping: 16 },
+                  rotateY: { type: "spring", stiffness: 220, damping: 16 },
+                  scale: { type: "spring", stiffness: 210, damping: 16 },
+                  x: { type: "spring", stiffness: 180, damping: 18 },
+                }
+          }
+          className="relative overflow-hidden rounded-3xl border p-6 md:p-7"
+          onPointerMove={(event) => applyCardFloat(event, false)}
+          onPointerDown={(event) => applyCardFloat(event, true)}
+          onPointerLeave={() => setCardFloat(defaultCardFloat)}
           style={{
             borderColor: "rgba(26,23,20,0.14)",
             backgroundColor: "rgba(255,255,255,0.58)",
-            boxShadow: "0 28px 56px -30px rgba(26,23,20,0.35)",
+            boxShadow: `${cardFloat.depthX}px ${cardFloat.depthY}px 58px -34px rgba(26,23,20,0.35), inset ${-cardFloat.depthX * 0.18}px ${-cardFloat.depthY * 0.18}px 0 rgba(255,255,255,0.5)`,
+            transformStyle: "preserve-3d",
+            transformPerspective: 1100,
           }}
         >
+          <motion.div
+            className="pointer-events-none absolute inset-0 rounded-3xl"
+            style={{
+              background: `radial-gradient(circle at ${cardFloat.glowX}% ${cardFloat.glowY}%, rgba(244,207,119,0.28) 0%, rgba(244,207,119,0.14) 20%, transparent 55%)`,
+            }}
+            animate={shouldReduceMotion ? undefined : { opacity: cardFloat.scale > 1.01 ? 1 : 0.6 }}
+            transition={shouldReduceMotion ? undefined : { duration: 0.25 }}
+          />
           <p className="text-sm font-bold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
             Live preference profile
           </p>
@@ -389,7 +479,7 @@ export default function Home() {
           style={{ fontFamily: "var(--font-serif)", color: GOLD }}
           className="text-center text-2xl italic md:text-3xl"
         >
-          How Nest works
+          How Ghosla works
         </motion.p>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">

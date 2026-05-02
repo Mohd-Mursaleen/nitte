@@ -65,7 +65,7 @@ export default function VoiceCall() {
         }}
       >
         <span style={{ fontFamily: "var(--font-display)" }} className="font-bold text-lg tracking-tight">
-          Nest
+          Ghosla
         </span>
         <a
           href="/"
@@ -142,7 +142,7 @@ function IdleView({
           style={{ fontFamily: "var(--font-serif)" }}
           className="italic text-[#c4943d] text-xl"
         >
-          Talk to Nest
+          Talk to Ghosla
         </p>
 
         {/* Mic button */}
@@ -339,7 +339,7 @@ function RecordingView({ onStop }: { onStop: () => void }) {
         style={{ fontFamily: "var(--font-display)" }}
         className="text-xs font-bold uppercase tracking-[0.28em] text-[#c4943d]"
       >
-        Nest
+        Ghosla
       </p>
 
       {/* Heading */}
@@ -526,7 +526,7 @@ function AnalyzingView({
         style={{ fontFamily: "var(--font-display)" }}
         className="text-xs font-bold uppercase tracking-[0.28em] text-[#c4943d]"
       >
-        Nest
+        Ghosla
       </p>
 
       <div className="space-y-3">

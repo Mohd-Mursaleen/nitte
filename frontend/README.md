@@ -1,6 +1,6 @@
-# TrueNest AI — Frontend
+# Ghosla — Frontend
 
-Next.js 16 + React 19 + Tailwind v4 + TypeScript frontend for TrueNest AI.
+Next.js 16 + React 19 + Tailwind v4 + TypeScript frontend for Ghosla.
 
 This is the user-facing interface. It connects to the Pipecat voice agent (WebRTC), drives the Playwright browser theater, and renders the final property results.
 
@@ -11,20 +11,20 @@ This is the user-facing interface. It connects to the Pipecat voice agent (WebRT
 Three screens, one linear flow:
 
 ```
-[Landing] → [Voice Call / Nest] → [Results]
+[Landing] → [Voice Call / Ghosla] → [Results]
 ```
 
 ### Screen 1 — Landing
-- TrueNest AI logo + tagline
-- Single CTA button: **"Talk to Nest"**
+- Ghosla logo + tagline
+- Single CTA button: **"Talk to Ghosla"**
 - Minimal, dark background, clean typography
 - No forms, no inputs — everything happens via voice
 
 ### Screen 2 — Voice Call (Active Session)
-- Animated orb/waveform that reacts to Nest speaking vs. user speaking
-- Live transcript strip at the bottom (shows what Nest just said)
-- Subtle status line: `"Listening..."` / `"Nest is speaking..."` / `"Searching across platforms..."`
-- When Nest says final line ("Give me a moment while I search..."), this screen triggers the Playwright theater automatically
+- Animated orb/waveform that reacts to Ghosla speaking vs. user speaking
+- Live transcript strip at the bottom (shows what Ghosla just said)
+- Subtle status line: `"Listening..."` / `"Ghosla is speaking..."` / `"Searching across platforms..."`
+- When Ghosla says final line ("Give me a moment while I search..."), this screen triggers the Playwright theater automatically
 - The Playwright browser windows open visibly on screen while this page shows: `"Finding your perfect home across 99acres, NoBroker & more..."`
 
 ### Screen 3 — Results
@@ -82,7 +82,7 @@ Key events to listen for:
 
 ```ts
 // Bot starts speaking
-client.on("botStartedSpeaking", () => setStatus("Nest is speaking..."));
+client.on("botStartedSpeaking", () => setStatus("Ghosla is speaking..."));
 
 // Bot stops speaking
 client.on("botStoppedSpeaking", () => setStatus("Listening..."));
@@ -98,7 +98,7 @@ client.on("userTranscript", (data) => {
 
 ### Detecting Conversation End
 
-When Nest says the final line (`"Give me a moment while I search..."`), the bot will stop speaking and not respond to further input.
+When Ghosla says the final line (`"Give me a moment while I search..."`), the bot will stop speaking and not respond to further input.
 
 Detect this via transcript matching:
 
@@ -148,7 +148,7 @@ frontend/
 ├── app/
 │   ├── page.tsx               # Landing screen
 │   ├── call/
-│   │   └── page.tsx           # Voice call screen (Nest)
+│   │   └── page.tsx           # Voice call screen (Ghosla)
 │   ├── results/
 │   │   └── page.tsx           # Property results screen
 │   ├── api/
@@ -197,17 +197,17 @@ cd ../pipecat-quickstart
 uv run bot.py
 ```
 
-Then open `http://localhost:3000` and click **Talk to Nest**.
+Then open `http://localhost:3000` and click **Talk to Ghosla**.
 
 ---
 
 ## Demo Flow (End to End)
 
 1. User opens `localhost:3000` — sees landing page
-2. Clicks **"Talk to Nest"** → navigates to `/call`
-3. WebRTC connects to Pipecat → Nest greets and starts the conversation
+2. Clicks **"Talk to Ghosla"** → navigates to `/call`
+3. WebRTC connects to Pipecat → Ghosla greets and starts the conversation
 4. User answers 6–7 questions via voice
-5. Nest says final line → frontend detects it → calls `/api/search`
+5. Ghosla says final line → frontend detects it → calls `/api/search`
 6. Playwright opens and runs the browser theater in the background (visible on screen)
 7. After ~35s, frontend auto-navigates to `/results`
 8. Results page shows 3 property cards with match scores
