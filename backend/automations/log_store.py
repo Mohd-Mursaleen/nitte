@@ -15,3 +15,8 @@ def clear_logs():
 
 def get_logs() -> List[str]:
     return list(theater_log)
+
+
+def append_log(msg: str) -> None:
+    """Append a message to the shared theater log."""
+    theater_log.append(msg)

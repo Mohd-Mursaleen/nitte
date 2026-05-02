@@ -4,6 +4,41 @@ Base URL: `http://localhost:8000`
 
 ---
 
+## How it works
+
+1. Frontend calls `POST /session/complete` with data collected from the voice conversation.
+2. Backend saves the session and immediately starts the **theater** in the background:
+   - `t=0s` — NoBroker opens in a visible browser (left third of screen)
+   - `t=5s` — 99Acres opens (middle third)
+   - `t=10s` — MagicBricks opens (right third)
+   - All 3 AI agents browse and search simultaneously
+   - `t=120s` — hard timeout, all browsers close
+3. Frontend polls `GET /theater/status` until `"complete"`.
+4. Frontend calls `GET /results` to get property cards ranked by match score.
+
+```
+Voice conv ends
+      │
+      ▼
+POST /session/complete
+      │
+      ├─ t=0s  → NoBroker browser opens   (agent searches)
+      ├─ t=5s  → 99Acres browser opens    (agent searches)
+      ├─ t=10s → MagicBricks browser opens (agent searches)
+      │
+      │  [poll GET /theater/status every 3s]
+      │
+      ├─ agents finish or t=120s timeout
+      │
+      ▼
+GET /theater/status → "complete"
+      │
+      ▼
+GET /results → 6 property cards sorted by match_score
+```
+
+---
+
 ## Endpoints
 
 ### `GET /health`
@@ -19,15 +54,15 @@ Liveness check.
 
 ### `POST /session/complete`
 
-Called when the voice conversation ends. Saves session data and starts the 60-second theater timer in the background.
+Saves session data and kicks off the 3-browser theater in the background.
 
-**Request body** — all fields are strings, all optional (send what you have):
+**Request body** — all fields are strings, all optional:
+
 ```json
 {
   "name": "Mursaleen",
   "age": "28",
   "gender": "male",
-  "has_locality": "yes",
   "locality": "Electronic City",
   "budget_range": "15000-20000",
   "bhk_type": "2 BHK",
@@ -53,50 +88,54 @@ Called when the voice conversation ends. Saves session data and starts the 60-se
 { "status": "started" }
 ```
 
-> After this call, the backend status moves from `idle` → `running`. After 60 seconds it moves to `complete`.
+> The more session fields provided, the better the match scores on `/results`.
 
 ---
 
 ### `GET /theater/status`
 
-Poll this every 3–5 seconds to know when the search is done.
+Poll every 3–5 seconds to know when the theater is done.
 
 **Response**
 ```json
 { "status": "running" }
 ```
 
-`status` is one of: `idle` | `running` | `complete`
-
-**Typical flow:**
-```
-POST /session/complete  →  status = "running"
-... 60 seconds ...
-GET  /theater/status    →  status = "complete"
-GET  /results           →  property cards
-```
+| Value | Meaning |
+|---|---|
+| `idle` | No session started yet |
+| `running` | Browsers are open, agents are working |
+| `complete` | All done — safe to call `/results` |
 
 ---
 
 ### `GET /theater/logs`
 
-Live log lines from the backend. Poll alongside `/theater/status` to show activity in the UI.
+Live log lines from all 3 agents. Poll every 1–2 seconds to show activity in the UI.
 
 **Response**
 ```json
 {
   "logs": [
-    "[AutomationRunner] Theater started. Waiting 60 seconds...",
-    "[AutomationRunner] Theater complete."
+    "[Runner] Theater started — opening 3 browsers",
+    "[NoBroker] Starting agent",
+    "[NoBroker] Step 1: Navigate to nobroker.in",
+    "[99Acres] Starting agent",
+    "[99Acres] Step 1: Navigate to 99acres.com",
+    "[MagicBricks] Starting agent",
+    "[NoBroker] Step 2: Search for 2 BHK in Electronic City",
+    "..."
   ]
 }
 ```
+
+Each line is prefixed with `[SiteName]` so the frontend can colour-code by source.
 
 ---
 
 ### `GET /results`
 
-Returns 6 hardcoded property cards sorted by match score. Call this once `status === "complete"`.
+Returns 6 property cards sorted by match score. Call once `status === "complete"`.
 
 **Response**
 ```json
@@ -160,29 +199,44 @@ Returns 6 hardcoded property cards sorted by match score. Call this once `status
         "power_backup": "DG backup for common areas only"
       }
     }
-    // ... 5 more cards
   ]
 }
 ```
 
-**`match_score`** — integer 60–97. Computed from session fields (BHK, budget, furnishing, locality, lifestyle). Higher = better match. Sorted descending.
+**`match_score`** — integer 60–97, computed dynamically from session fields:
 
-**All 6 properties:**
+| Field | Points |
+|---|---|
+| BHK type matches | +10 |
+| Furnishing matches | +8 |
+| Rent within budget range | +10 |
+| Lifestyle matches | +7 |
+| Locality word overlap | +8 |
+| Exact phase match (Phase 1 / Phase 2) | +5 |
+| Base score | 60 |
 
-| id | Title | Rent | Platform | Phase |
-|----|-------|------|----------|-------|
-| 1 | Subha Omkara Apartment | ₹17,500 | NoBroker | Phase 1 |
-| 2 | DS Max Silveroak | ₹15,500 | MagicBricks | Phase 2 |
-| 3 | Ittina Neela | ₹19,500 | 99acres | Phase 1 |
-| 4 | Prestige Falcon City | ₹19,000 | NoBroker | Phase 1 periphery |
-| 5 | Salarpuria Greenage | ₹18,000 | 99acres | Hosur Road Corridor |
-| 6 | Mantri Lithos | ₹16,500 | NoBroker | Phase 2 |
+Results are sorted by `match_score` descending. Capped at 97 — 100% looks fake.
+
+**All 6 hardcoded properties:**
+
+| id | Title | Rent | Maintenance | Platform | Phase |
+|----|-------|------|-------------|----------|-------|
+| 1 | Subha Omkara Apartment | ₹17,500 | ₹2,000 | NoBroker | Phase 1 |
+| 2 | DS Max Silveroak | ₹15,500 | ₹2,500 | MagicBricks | Phase 2 |
+| 3 | Ittina Neela | ₹19,500 | ₹3,000 | 99acres | Phase 1 |
+| 4 | Prestige Falcon City | ₹19,000 | ₹3,500 | NoBroker | Phase 1 periphery |
+| 5 | Salarpuria Greenage | ₹18,000 | ₹2,800 | 99acres | Hosur Road Corridor |
+| 6 | Mantri Lithos | ₹16,500 | ₹2,200 | NoBroker | Phase 2 |
 
 ---
 
 ### `POST /theater/reset`
 
 Dev-only. Resets all state — use between test runs.
+
+```bash
+curl -X POST http://localhost:8000/theater/reset
+```
 
 **Response**
 ```json
@@ -191,30 +245,67 @@ Dev-only. Resets all state — use between test runs.
 
 ---
 
-## Frontend Integration Pattern
+## Frontend integration
 
 ```js
-// 1. Start session (call after voice conversation ends)
+// 1. After voice conversation ends
 await fetch('/session/complete', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(sessionData)
 })
 
-// 2. Poll status every 3 seconds
-const interval = setInterval(async () => {
+// 2. Poll status
+const poll = setInterval(async () => {
   const { status } = await fetch('/theater/status').then(r => r.json())
   if (status === 'complete') {
-    clearInterval(interval)
-    // 3. Fetch results
+    clearInterval(poll)
     const { results } = await fetch('/results').then(r => r.json())
-    // render results sorted by match_score (already sorted)
+    // results already sorted by match_score descending
   }
 }, 3000)
+
+// 3. Optional — show live logs while waiting
+const logPoll = setInterval(async () => {
+  const { logs } = await fetch('/theater/logs').then(r => r.json())
+  // render logs, colour-code by [NoBroker] / [99Acres] / [MagicBricks] prefix
+}, 1500)
 ```
 
 ---
 
 ## CORS
 
-Allowed origins: `http://localhost:3000`, `http://localhost:7860`
+Allowed origins: `http://localhost:3000` (frontend), `http://localhost:7860` (Pipecat/Gradio)
+
+---
+
+## Theater window layout
+
+When the theater runs, 3 browser windows open side by side on screen:
+
+```
+┌──────────────┬──────────────┬──────────────┐
+│   NoBroker   │   99Acres    │  MagicBricks │
+│   x=0        │   x=480      │   x=960      │
+│   480×900    │   480×900    │   480×900    │
+└──────────────┴──────────────┴──────────────┘
+```
+
+Default assumes 1440px screen width. Change `SCREEN_WIDTH` in `automations/scripts/theater.py` if needed.
+
+---
+
+## Running locally
+
+```bash
+# Install deps
+pip install -r requirements.txt
+pip install -e ./browser-use-main
+
+# Start server
+uvicorn main:app --reload --port 8000
+
+# Trigger a test run
+python trigger.py
+```
