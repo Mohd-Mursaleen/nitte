@@ -1,225 +1,336 @@
 "use client";
 
-import {
-  motion,
-  useMotionTemplate,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-} from "framer-motion";
+import { motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 
-const listingTiles = [
+// ── Palette ────────────────────────────────────────────────────────────────────
+// bg:    #e2ded7  warm grey (clearly not white)
+// ink:   #1a1714  near-black
+// muted: #6b635a
+// gold:  #c4943d  richer, better contrast on grey
+// dark:  #0e0d0b  near-black sections
+
+const platforms = [
   {
-    label: "Intent Match",
-    value: "96%",
-    note: "Matches your area, budget, and amenities in one intent score.",
+    name: "99acres",
+    logo: "/99acres.png",
+    desc: "India's largest property portal — millions of verified owner listings across every major city.",
   },
   {
-    label: "Smart Shortlist",
-    value: "Top",
-    note: "Only the strongest options, filtered to high-fit rental choices.",
+    name: "NoBroker",
+    logo: "/nobroker.png",
+    desc: "Zero brokerage, direct from owners. No middlemen, no hidden fees.",
   },
   {
-    label: "Search Time Saved",
-    value: "8x",
-    note: "Skip tab-hopping and compare curated results in one flow.",
+    name: "MagicBricks",
+    logo: "/magicbricks.png",
+    desc: "Premium listings with deep locality insights, photos, and owner contacts.",
   },
 ];
 
-const reveal = {
-  hidden: { opacity: 0, y: 24 },
+const steps = [
+  {
+    num: "01",
+    title: "You talk",
+    desc: "Describe your locality, budget, BHK, and preferences naturally — no forms, no filters.",
+  },
+  {
+    num: "02",
+    title: "We search",
+    desc: "Our system scans all three platforms simultaneously in real time.",
+  },
+  {
+    num: "03",
+    title: "You choose",
+    desc: "Ranked shortlist matched to exactly what you described, with full locality intel.",
+  },
+];
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
 
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.13 } },
+};
+
+// Inline bg style — reused on light sections
+const lightBg: React.CSSProperties = {
+  backgroundColor: "#e2ded7",
+  backgroundImage: [
+    // top-left warm glow
+    "radial-gradient(ellipse 70% 55% at 0% 0%, rgba(196,148,61,0.22) 0%, transparent 55%)",
+    // bottom-right warm glow
+    "radial-gradient(ellipse 60% 50% at 100% 100%, rgba(196,148,61,0.15) 0%, transparent 55%)",
+    // dot grid
+    "radial-gradient(rgba(26,23,20,0.13) 1.2px, transparent 1.2px)",
+  ].join(", "),
+  backgroundSize: "100% 100%, 100% 100%, 24px 24px",
+};
+
 export default function Home() {
-  const reduceMotion = useReducedMotion();
-  const [surfaceTone, setSurfaceTone] = useState<"white" | "orange">("white");
-  const pointerX = useMotionValue(-320);
-  const pointerY = useMotionValue(-320);
-  const smoothX = useSpring(pointerX, {
-    stiffness: 220,
-    damping: 30,
-    mass: 0.35,
-  });
-  const smoothY = useSpring(pointerY, {
-    stiffness: 220,
-    damping: 30,
-    mass: 0.35,
-  });
-  const glowColor =
-    surfaceTone === "orange"
-      ? "rgba(255,255,255,0.5)"
-      : "rgba(251,146,60,0.18)";
-  const cursorGlow = useMotionTemplate`radial-gradient(240px circle at ${smoothX}px ${smoothY}px, ${glowColor}, transparent 72%)`;
-
   return (
-    <main
-      className="relative overflow-x-clip text-center"
-      onMouseMove={(event) => {
-        pointerX.set(event.clientX);
-        pointerY.set(event.clientY);
-        const target = event.target as HTMLElement | null;
-        const surface = target?.closest<HTMLElement>("[data-glow-surface]");
-        const nextTone =
-          surface?.dataset.glowSurface === "orange" ? "orange" : "white";
-        if (nextTone !== surfaceTone) {
-          setSurfaceTone(nextTone);
-        }
-      }}
-    >
-      <div aria-hidden className="mesh-layer" />
-      <div aria-hidden className="mesh-grain" />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-10"
-        style={{ background: cursorGlow }}
-      />
+    <div className="min-h-screen text-[#1a1714]" style={lightBg}>
 
+      {/* ── Nav ──────────────────────────────────────────── */}
       <header
-        data-glow-surface="white"
-        className="sticky top-0 z-20 border-b border-orange-200/80 bg-white/90 backdrop-blur-xl"
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 border-b border-[rgba(26,23,20,0.1)] backdrop-blur-md"
+        style={{ backgroundColor: "rgba(226,222,215,0.92)" }}
       >
-        <nav className="mx-auto flex w-full max-w-6xl items-center justify-center gap-4 px-6 py-4 md:px-10">
-          <p className="text-sm tracking-[0.22em] text-zinc-900 uppercase">
-            TrueNest AI
-          </p>
-          <Link
-            href="#highlight"
-            data-glow-surface="orange"
-            className="rounded-full border border-orange-300 bg-orange-500 px-4 py-2 text-xs font-semibold text-white shadow-[0_14px_30px_-18px_rgba(249,115,22,0.95)] transition hover:bg-orange-600"
-          >
-            Explore Now
-          </Link>
-        </nav>
+        <span
+          style={{ fontFamily: "var(--font-display)" }}
+          className="font-bold text-lg tracking-tight text-[#1a1714]"
+        >
+          Nest
+        </span>
+        <Link
+          href="/call"
+          className="px-5 py-2.5 text-sm font-bold rounded-full transition-colors"
+          style={{
+            backgroundColor: "#c4943d",
+            color: "#1a1714",
+            boxShadow: "0 2px 12px -2px rgba(196,148,61,0.45)",
+          }}
+        >
+          Start your search →
+        </Link>
       </header>
 
-      <section
-        data-glow-surface="white"
-        className="mx-auto w-full max-w-6xl px-6 pt-18 pb-16 md:px-10 md:pt-24"
-      >
+      {/* ── Hero ─────────────────────────────────────────── */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 pt-20">
         <motion.div
-          initial={reduceMotion ? false : "hidden"}
-          animate={reduceMotion ? undefined : "show"}
-          variants={reveal}
-          className="space-y-7"
+          initial="hidden"
+          animate="show"
+          variants={stagger}
+          className="max-w-4xl space-y-6"
         >
-          <h1 className="mx-auto max-w-4xl text-4xl leading-tight text-zinc-950 md:text-6xl">
-            Describe your ideal rental once, and we return your best-fit homes
-            instantly.
-          </h1>
-          <p className="mx-auto max-w-2xl text-base leading-relaxed text-zinc-700 md:text-lg">
-            We deliver the <strong>best matches</strong> by area, size, and
-            budget with minimal hassle.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          {/* Brand mark in hero */}
+          <motion.div variants={fadeUp}>
+            <span
+              style={{ fontFamily: "var(--font-display)" }}
+              className="text-xs font-bold uppercase tracking-[0.32em] text-[#c4943d]"
+            >
+              Nest
+            </span>
+          </motion.div>
+
+          {/* Serif tagline */}
+          <motion.p
+            variants={fadeUp}
+            style={{ fontFamily: "var(--font-serif)" }}
+            className="italic text-[#1a1714] text-2xl md:text-3xl tracking-wide opacity-70"
+          >
+            Find your perfect home
+          </motion.p>
+
+          {/* Main headline */}
+          <motion.h1
+            variants={fadeUp}
+            style={{ fontFamily: "var(--font-display)" }}
+            className="text-6xl md:text-[90px] font-bold leading-[0.92] tracking-[-0.04em] text-[#1a1714]"
+          >
+            Tell us what
+            <br />
+            you need.
+          </motion.h1>
+
+          {/* Body */}
+          <motion.p
+            variants={fadeUp}
+            className="max-w-lg mx-auto text-[#6b635a] text-lg leading-relaxed"
+          >
+            Describe your budget, location, and preferences in one conversation.
+            We search across platforms and return your best matches instantly.
+          </motion.p>
+
+          {/* CTA */}
+          <motion.div variants={fadeUp} className="pt-3">
             <Link
               href="/call"
-              data-glow-surface="orange"
-              className="rounded-full border border-orange-300 bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-[0_22px_45px_-24px_rgba(249,115,22,0.98)] transition hover:bg-orange-600"
+              className="inline-flex items-center gap-2 px-9 py-4 text-sm font-bold rounded-full transition-colors"
+              style={{
+                backgroundColor: "#c4943d",
+                color: "#1a1714",
+                boxShadow: "0 10px 36px -8px rgba(196,148,61,0.55)",
+              }}
             >
-              Find Your Home
+              Start talking →
             </Link>
-            <p className="rounded-full border border-orange-200 bg-white px-4 py-3 text-xs font-semibold tracking-[0.12em] text-orange-700 uppercase">
-              One search • best listings
-            </p>
-          </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Scroll cue */}
+        <motion.div
+          className="absolute bottom-10 flex flex-col items-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 0.6 }}
+        >
+          <motion.span
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+            className="text-[#c4943d] text-xs font-bold tracking-[0.24em] uppercase"
+          >
+            ↓
+          </motion.span>
         </motion.div>
       </section>
 
+      {/* ── Platform section — dark ───────────────────────── */}
+      <section style={{ backgroundColor: "#0e0d0b" }} className="py-28 px-8">
+        <div className="max-w-6xl mx-auto space-y-20">
+
+          {/* Heading */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center space-y-5 max-w-2xl mx-auto"
+          >
+            <p
+              style={{ fontFamily: "var(--font-serif)" }}
+              className="italic text-[#c4943d] text-lg"
+            >
+              Powered by real data
+            </p>
+            <h2
+              style={{ fontFamily: "var(--font-display)" }}
+              className="text-3xl md:text-4xl font-bold text-white tracking-[-0.03em] leading-tight"
+            >
+              One conversation.
+              <br />
+              Three platforms. Your best match.
+            </h2>
+            <p className="text-[#7a7470] text-base leading-relaxed">
+              You tell Nest what you're looking for. We simultaneously search
+              India's top rental platforms and return a shortlist ranked by
+              budget, location, size, and the amenities that matter most.
+            </p>
+          </motion.div>
+
+          {/* Platform cards */}
+          <div className="grid md:grid-cols-3 gap-5">
+            {platforms.map((platform, i) => (
+              <motion.div
+                key={platform.name}
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ delay: i * 0.1, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="rounded-2xl p-7 space-y-6 flex flex-col"
+                style={{
+                  backgroundColor: "#1a1917",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                {/* Logo on white pill — preserves brand colors */}
+                <div className="rounded-xl px-4 py-3 w-fit bg-white">
+                  <div className="relative h-9 w-28">
+                    <Image
+                      src={platform.logo}
+                      alt={platform.name}
+                      fill
+                      className="object-contain object-left"
+                    />
+                  </div>
+                </div>
+                <p className="text-[#7a7470] text-sm leading-relaxed flex-1">
+                  {platform.desc}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works — light ─────────────────────────── */}
+      <section className="px-8 py-28 max-w-6xl mx-auto">
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6 }}
+          style={{ fontFamily: "var(--font-serif)" }}
+          className="italic text-[#c4943d] text-center text-lg mb-20"
+        >
+          The process
+        </motion.p>
+
+        <div className="grid md:grid-cols-3 gap-14">
+          {steps.map((step, i) => (
+            <motion.div
+              key={step.num}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.35 }}
+              transition={{ delay: i * 0.12, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+              className="space-y-5"
+            >
+              <span
+                style={{ fontFamily: "var(--font-serif)", color: "#b8b0a6" }}
+                className="text-5xl block"
+              >
+                {step.num}
+              </span>
+              <h3
+                style={{ fontFamily: "var(--font-display)" }}
+                className="text-xl font-bold tracking-tight"
+              >
+                {step.title}
+              </h3>
+              <p className="text-[#6b635a] text-sm leading-relaxed">
+                {step.desc}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Final CTA — dark ─────────────────────────────── */}
       <section
-        data-glow-surface="white"
-        className="mx-auto w-full max-w-6xl px-6 pb-16 md:px-10"
+        style={{ backgroundColor: "#0e0d0b" }}
+        className="px-8 py-36 text-center"
       >
         <motion.div
-          initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
-          whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-          viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="grid gap-5 md:grid-cols-3"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-2xl mx-auto space-y-10"
         >
-          {listingTiles.map((tile, index) => (
-            <motion.article
-              key={tile.label}
-              data-glow-surface="orange"
-              initial={reduceMotion ? false : { opacity: 0, y: 28 }}
-              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.35 }}
-              animate={
-                reduceMotion
-                  ? undefined
-                  : { y: [0, -6 - index * 2, 0], rotate: [0, 0.2, 0] }
-              }
-              transition={{
-                opacity: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-                y: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-                repeat: Number.POSITIVE_INFINITY,
-                duration: 5.5 + index,
-                ease: "easeInOut",
-              }}
-              className="group relative overflow-hidden rounded-2xl border border-orange-300/80 bg-gradient-to-br from-orange-200/70 via-orange-100 to-orange-50 shadow-[0_35px_70px_-58px_rgba(249,115,22,0.35)]"
+          <h2
+            style={{ fontFamily: "var(--font-display)" }}
+            className="text-4xl md:text-5xl font-bold leading-tight tracking-[-0.04em] text-white"
+          >
+            Your next home is{" "}
+            <span
+              style={{ fontFamily: "var(--font-serif)", color: "#c4943d" }}
+              className="italic font-normal"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.55),transparent_42%),radial-gradient(circle_at_82%_84%,rgba(251,146,60,0.3),transparent_38%)]" />
-              <div className="relative space-y-3 px-5 py-6 text-center">
-                <p className="text-xs font-semibold tracking-[0.16em] text-orange-800 uppercase">
-                  {tile.label}
-                </p>
-                <p className="text-5xl leading-none text-orange-700 md:text-6xl">
-                  {tile.value}
-                </p>
-                <p className="mx-auto max-w-xs text-sm leading-relaxed text-zinc-800">
-                  {tile.note}
-                </p>
-              </div>
-            </motion.article>
-          ))}
+              one conversation away.
+            </span>
+          </h2>
+          <Link
+            href="/call"
+            className="inline-flex items-center gap-2 px-9 py-4 text-sm font-bold rounded-full transition-colors"
+            style={{
+              backgroundColor: "#c4943d",
+              color: "#1a1714",
+              boxShadow: "0 8px 32px -8px rgba(196,148,61,0.45)",
+            }}
+          >
+            Start your search →
+          </Link>
         </motion.div>
       </section>
-
-      <section
-        data-glow-surface="white"
-        className="mx-auto w-full max-w-6xl px-6 pb-24 md:px-10"
-      >
-        <motion.article
-          id="highlight"
-          data-glow-surface="orange"
-          initial={reduceMotion ? false : "hidden"}
-          whileInView={reduceMotion ? undefined : "show"}
-          viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
-          variants={reveal}
-          className="relative overflow-hidden rounded-3xl border border-orange-400/45 bg-orange-500 p-6 md:p-10"
-        >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-100 transition"
-            style={{
-              background: `radial-gradient(360px circle at 50% 50%, rgba(255,237,213,0.35), transparent 70%)`,
-            }}
-          />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.35),transparent_44%),radial-gradient(circle_at_85%_80%,rgba(234,88,12,0.28),transparent_40%)]" />
-
-          <div className="relative z-10 space-y-5 text-center">
-            <p className="mx-auto w-fit rounded-full border border-orange-100/65 bg-white/20 px-3 py-2 text-xs font-semibold tracking-[0.12em] text-orange-50 uppercase">
-              Cursor highlight section
-            </p>
-            <h2 className="mx-auto max-w-4xl text-3xl leading-tight text-white md:text-5xl">
-              Your description becomes a ranked shortlist built for your exact
-              rental goals.
-            </h2>
-            <p className="mx-auto max-w-3xl text-base leading-relaxed text-orange-50 md:text-lg">
-              Example:
-              <strong>
-                “2BHK near Whitefield, around 900 sqft, budget 25k–32k,
-                furnished, lift and parking needed.”
-              </strong>
-            </p>
-          </div>
-        </motion.article>
-      </section>
-    </main>
+    </div>
   );
 }

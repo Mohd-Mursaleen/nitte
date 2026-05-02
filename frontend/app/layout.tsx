@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Syne } from "next/font/google";
+import { Cormorant_Garamond, DM_Sans, Syne } from "next/font/google";
 import "./globals.css";
 
 const bodyFont = DM_Sans({
@@ -10,12 +10,20 @@ const bodyFont = DM_Sans({
 const displayFont = Syne({
   variable: "--font-display",
   subsets: ["latin"],
+  weight: ["700", "800"],
+});
+
+const serifFont = Cormorant_Garamond({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
-  title: "TrueNest AI",
+  title: "Nest — Find your perfect home",
   description:
-    "Describe your ideal rental once and get the best-matching homes in one smart search.",
+    "Describe your ideal rental once. We search 99acres, NoBroker, and MagicBricks and return your best matches.",
   icons: {
     icon: "/favicon.svg",
   },
@@ -29,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body
-        className={`${bodyFont.variable} ${displayFont.variable} min-h-full`}
+        className={`${bodyFont.variable} ${displayFont.variable} ${serifFont.variable} min-h-full`}
       >
         {children}
       </body>

@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import dynamic from "next/dynamic";
 
-const BACKEND = "http://localhost:8000";
-
-type Stage = "idle" | "listening" | "analyzing";
+const VoiceCall = dynamic(() => import("./VoiceCall"), { ssr: false });
 
 export default function CallPage() {
   const [stage, setStage] = useState<Stage>("idle");

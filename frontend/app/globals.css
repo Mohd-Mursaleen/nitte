@@ -17,8 +17,8 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: #fff;
-  color: #18181b;
+  background: #e2ded7;
+  color: #1a1714;
   font-family: var(--font-body), sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -28,7 +28,11 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display), sans-serif;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
+}
+
+.font-serif {
+  font-family: var(--font-serif), serif;
 }
 
 a {
@@ -37,43 +41,6 @@ a {
 }
 
 ::selection {
-  background: rgb(254 215 170 / 75%);
-  color: #18181b;
-}
-
-.mesh-layer {
-  position: fixed;
-  inset: -25%;
-  z-index: -2;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 18%, rgb(255 237 213 / 86%), transparent 34%),
-    radial-gradient(circle at 88% 20%, rgb(255 247 237 / 92%), transparent 36%),
-    radial-gradient(circle at 52% 76%, rgb(255 230 204 / 88%), transparent 38%),
-    radial-gradient(circle at 25% 85%, rgb(255 244 232 / 90%), transparent 34%),
-    #fff;
-  filter: saturate(1.05);
-  animation: mesh-drift 20s ease-in-out infinite alternate;
-}
-
-.mesh-grain {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.24;
-  background-image: radial-gradient(
-    rgb(20 20 20 / 10%) 0.6px,
-    transparent 0.6px
-  );
-  background-size: 3px 3px;
-}
-
-@keyframes mesh-drift {
-  0% {
-    transform: translate3d(-2%, -2%, 0) scale(1);
-  }
-  100% {
-    transform: translate3d(2%, 2%, 0) scale(1.03);
-  }
+  background: #c4943d;
+  color: #fff;
 }
