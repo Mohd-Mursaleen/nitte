@@ -1,6 +1,12 @@
 import asyncio
 from typing import Any
 
+from automations.log_store import append_log
+from automations.scripts.theater import run_nobroker, run_99acres, run_magicbricks
+
+THEATER_TIMEOUT = 60  # hard cap — all browsers force-close after this many seconds
+STAGGER_DELAY = 5     # seconds between each window opening
+
 
 class AutomationRunner:
     def __init__(self):
@@ -11,12 +17,53 @@ class AutomationRunner:
         self.status = "idle"
         self.results = []
 
-    async def run_all(self, session: dict[str, Any]):
-        self.status = "running"
-        print("[AutomationRunner] Theater started. Waiting 60 seconds...")
-        await asyncio.sleep(60)
-        self.status = "complete"
-        print("[AutomationRunner] Theater complete.")
+    async def run_all(self, session: dict[str, Any]) -> None:
+        """
+        Open 3 browser windows in staggered sequence, run agents in parallel,
+        then force-close everything after THEATER_TIMEOUT seconds.
 
-    async def shutdown(self):
+        Sequence:
+          t=0s  → NoBroker opens
+          t=5s  → 99Acres opens
+          t=10s → MagicBricks opens
+          t=60s → all browsers killed, status = complete
+
+        Args:
+            session: Voice session data from Nest.
+        """
+        self.status = "running"
+        append_log("[Runner] Theater started")
+
+        async def staggered():
+            append_log("[Runner] Opening NoBroker...")
+            nobroker_task = asyncio.create_task(run_nobroker(session))
+
+            await asyncio.sleep(STAGGER_DELAY)
+            append_log("[Runner] Opening 99Acres...")
+            acres_task = asyncio.create_task(run_99acres(session))
+
+            await asyncio.sleep(STAGGER_DELAY)
+            append_log("[Runner] Opening MagicBricks...")
+            magic_task = asyncio.create_task(run_magicbricks(session))
+
+            # Wait for all 3 to finish naturally
+            await asyncio.gather(
+                nobroker_task,
+                acres_task,
+                magic_task,
+                return_exceptions=True,
+            )
+
+        try:
+            # Hard 60-second ceiling — cancel everything if agents run long
+            await asyncio.wait_for(staggered(), timeout=THEATER_TIMEOUT)
+        except asyncio.TimeoutError:
+            append_log("[Runner] 60s timeout reached — closing all browsers")
+        except Exception as e:
+            append_log(f"[Runner] Unexpected error: {e}")
+        finally:
+            self.status = "complete"
+            append_log("[Runner] Theater complete")
+
+    async def shutdown(self) -> None:
         pass
