@@ -91,7 +91,9 @@ export default function Home() {
   const shouldReduceMotion = useReducedMotion();
   const [activeExample, setActiveExample] = useState(0);
   const [cardFloat, setCardFloat] = useState(defaultCardFloat);
+  const [partnersFloat, setPartnersFloat] = useState(defaultCardFloat);
   const resetFloatTimeoutRef = useRef<number | null>(null);
+  const resetPartnersFloatTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (shouldReduceMotion) return;
@@ -144,10 +146,47 @@ export default function Home() {
     }
   };
 
+  const applyPartnersFloat = (
+    event: ReactPointerEvent<HTMLDivElement>,
+    isClick: boolean
+  ) => {
+    if (shouldReduceMotion || event.pointerType === "touch") return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const xRatio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+    const yRatio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1);
+    const nx = xRatio - 0.5;
+    const ny = yRatio - 0.5;
+
+    const intensity = isClick ? 13 : 7;
+
+    setPartnersFloat({
+      rotateX: ny * intensity,
+      rotateY: -nx * intensity,
+      scale: isClick ? 1.012 : 1.006,
+      depthX: -nx * 26,
+      depthY: -ny * 26,
+      glowX: xRatio * 100,
+      glowY: yRatio * 100,
+    });
+
+    if (isClick) {
+      if (resetPartnersFloatTimeoutRef.current) {
+        window.clearTimeout(resetPartnersFloatTimeoutRef.current);
+      }
+      resetPartnersFloatTimeoutRef.current = window.setTimeout(() => {
+        setPartnersFloat(defaultCardFloat);
+      }, 900);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (resetFloatTimeoutRef.current) {
         window.clearTimeout(resetFloatTimeoutRef.current);
+      }
+      if (resetPartnersFloatTimeoutRef.current) {
+        window.clearTimeout(resetPartnersFloatTimeoutRef.current);
       }
     };
   }, []);
@@ -178,10 +217,10 @@ export default function Home() {
               Home
             </Link>
             <a
-              href="#partners"
+              href="#platforms"
               className="rounded-full px-4 py-2 text-sm font-bold uppercase tracking-[0.12em] text-[#6b635a] transition-colors hover:bg-[rgba(26,23,20,0.08)] hover:text-[#1a1714]"
             >
-              Partners
+              Platforms
             </a>
             <a
               href="#process"
@@ -215,12 +254,19 @@ export default function Home() {
           transition={shouldReduceMotion ? undefined : { duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-7"
         >
-          <p
-            style={{ fontFamily: "var(--font-serif)", color: GOLD }}
+          <motion.p
+            style={{ fontFamily: "var(--font-serif)", color: INK }}
+            initial={shouldReduceMotion ? undefined : { textShadow: "0 0 0 rgba(214,166,63,0)" }}
+            animate={
+              shouldReduceMotion
+                ? undefined
+                : { textShadow: "0 0 16px rgba(214,166,63,0.33), 0 2px 8px rgba(214,166,63,0.2)" }
+            }
+            transition={shouldReduceMotion ? undefined : { duration: 1.15, ease: "easeOut" }}
             className="text-2xl italic md:text-3xl"
           >
             Rental search, redesigned for speed.
-          </p>
+          </motion.p>
 
           <h1
             style={{ fontFamily: "var(--font-display)" }}
@@ -249,14 +295,14 @@ export default function Home() {
                 boxShadow: "0 16px 34px -14px rgba(214,166,63,0.9)",
               }}
             >
-              Start talking
+              Connect to find your next home
             </Link>
             <a
-              href="#partners"
+              href="#platforms"
               className="inline-flex items-center rounded-full border px-9 py-4 text-base font-bold tracking-wide text-[#1a1714] transition-colors hover:bg-[rgba(26,23,20,0.05)]"
               style={{ borderColor: "rgba(26,23,20,0.2)" }}
             >
-              See all partner logos
+              See all platform logos
             </a>
           </div>
         </motion.div>
@@ -387,19 +433,76 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <section id="partners" className="px-5 pb-20 md:px-8">
+      <section id="platforms" className="px-5 pb-20 md:px-8">
         <motion.div
           {...reveal}
+          animate={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  rotateX: partnersFloat.rotateX,
+                  rotateY: partnersFloat.rotateY,
+                  scale: partnersFloat.scale,
+                  x: partnersFloat.depthX * 0.08,
+                  y: partnersFloat.depthY * 0.08,
+                }
+          }
+          transition={
+            shouldReduceMotion
+              ? undefined
+              : {
+                  rotateX: { type: "spring", stiffness: 170, damping: 18 },
+                  rotateY: { type: "spring", stiffness: 170, damping: 18 },
+                  scale: { type: "spring", stiffness: 170, damping: 18 },
+                  x: { type: "spring", stiffness: 160, damping: 18 },
+                  y: { type: "spring", stiffness: 160, damping: 18 },
+                }
+          }
           className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] border px-6 py-12 md:px-10"
+          onPointerMove={(event) => applyPartnersFloat(event, false)}
+          onPointerDown={(event) => applyPartnersFloat(event, true)}
+          onPointerLeave={() => setPartnersFloat(defaultCardFloat)}
           style={{
             borderColor: "rgba(255,255,255,0.45)",
             background:
               "linear-gradient(140deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.14) 52%, rgba(214,166,63,0.16) 100%)",
             boxShadow:
-              "0 24px 65px -30px rgba(26,23,20,0.45), inset 0 1px 0 rgba(255,255,255,0.42)",
+              `${partnersFloat.depthX}px ${partnersFloat.depthY}px 65px -30px rgba(26,23,20,0.45), inset ${-partnersFloat.depthX * 0.12}px ${-partnersFloat.depthY * 0.12}px 0 rgba(255,255,255,0.42)`,
             backdropFilter: "blur(14px)",
+            transformStyle: "preserve-3d",
+            transformPerspective: 1200,
           }}
         >
+          <motion.div
+            className="pointer-events-none absolute -inset-24 -z-10 rounded-[3rem]"
+            style={{
+              background: `radial-gradient(circle at ${partnersFloat.glowX}% ${partnersFloat.glowY}%, rgba(244,207,119,0.5) 0%, rgba(214,166,63,0.26) 28%, transparent 66%)`,
+              filter: "blur(28px)",
+            }}
+            animate={
+              shouldReduceMotion
+                ? undefined
+                : {
+                    opacity: 0.45 + (Math.max(Math.abs(partnersFloat.depthX), Math.abs(partnersFloat.depthY)) / 40),
+                    scale: 1.03 + (Math.max(Math.abs(partnersFloat.depthX), Math.abs(partnersFloat.depthY)) / 200),
+                    x: -partnersFloat.depthX * 0.4,
+                    y: -partnersFloat.depthY * 0.4,
+                  }
+            }
+            transition={shouldReduceMotion ? undefined : { type: "spring", stiffness: 150, damping: 18 }}
+          />
+          <motion.div
+            className="pointer-events-none absolute inset-0 rounded-[2rem]"
+            style={{
+              background: `radial-gradient(circle at ${partnersFloat.glowX}% ${partnersFloat.glowY}%, rgba(244,207,119,0.28) 0%, rgba(244,207,119,0.08) 24%, transparent 58%)`,
+            }}
+            animate={
+              shouldReduceMotion
+                ? undefined
+                : { opacity: 0.45 + (Math.max(Math.abs(partnersFloat.depthX), Math.abs(partnersFloat.depthY)) / 58) }
+            }
+            transition={shouldReduceMotion ? undefined : { duration: 0.22 }}
+          />
           <div
             className="pointer-events-none absolute -top-20 -left-10 h-48 w-48 rounded-full"
             style={{ background: "radial-gradient(circle, rgba(244,207,119,0.3) 0%, transparent 70%)" }}
@@ -413,16 +516,16 @@ export default function Home() {
             style={{ fontFamily: "var(--font-serif)", color: "#8d651a" }}
             className="text-center text-3xl italic md:text-4xl"
           >
-            Verified data partners
+            Search across top platforms
           </p>
           <h2
             style={{ fontFamily: "var(--font-display)" }}
             className="mx-auto mt-4 max-w-4xl text-center text-4xl font-bold leading-tight tracking-[-0.03em] text-[#1a1714] md:text-5xl"
           >
-            We search these platforms in real time and merge results into one ranked shortlist.
+            We pull listings from major rental platforms and bring them into one easy view.
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-center text-lg leading-relaxed text-[#4b4339] md:text-xl">
-            One request from you. Unified inventory from every partner.
+            One request from you. Compare options from multiple sources in one place.
           </p>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
