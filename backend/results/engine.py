@@ -76,6 +76,8 @@ HARDCODED_LISTINGS = [
             "internet": "Jio Fiber, ACT, BSNL — 100–300 Mbps",
             "power_backup": "DG backup for common areas only",
         },
+        "fraud_score": 12,
+        "vibe_score": 52,
     },
     {
         "id": 2,
@@ -145,6 +147,8 @@ HARDCODED_LISTINGS = [
             "internet": "ACT Fibernet and Jio Fiber. Airtel patchy in sub-lanes.",
             "power_backup": "Full DG backup for all flats",
         },
+        "fraud_score": 8,
+        "vibe_score": 70,
     },
     {
         "id": 3,
@@ -215,6 +219,8 @@ HARDCODED_LISTINGS = [
             "internet": "Jio Fiber, ACT, Airtel — 100–200 Mbps consistently",
             "power_backup": "DG backup common areas and lifts only — invest in UPS if WFH",
         },
+        "fraud_score": 14,
+        "vibe_score": 65,
     },
     {
         "id": 4,
@@ -284,6 +290,8 @@ HARDCODED_LISTINGS = [
             "internet": "Jio Fiber, ACT, Airtel all excellent. Average 200–500 Mbps.",
             "power_backup": "Full DG backup for all flats including ACs",
         },
+        "fraud_score": 5,
+        "vibe_score": 88,
     },
     {
         "id": 5,
@@ -353,6 +361,8 @@ HARDCODED_LISTINGS = [
             "internet": "ACT Fibernet and Jio Fiber — 150–300 Mbps",
             "power_backup": "Full DG backup for all flats",
         },
+        "fraud_score": 9,
+        "vibe_score": 72,
     },
     {
         "id": 6,
@@ -422,6 +432,8 @@ HARDCODED_LISTINGS = [
             "internet": "Jio Fiber and ACT available. 100–250 Mbps typical.",
             "power_backup": "Full DG backup for all flats including ACs",
         },
+        "fraud_score": 7,
+        "vibe_score": 75,
     },
 ]
 
