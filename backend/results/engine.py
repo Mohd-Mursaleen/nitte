@@ -481,7 +481,7 @@ def compute_match_score(listing: dict, session: dict[str, Any]) -> int:
 
 
 def compute_results(session: dict[str, Any]) -> list[dict]:
-    """Returns all 6 listings sorted by match score descending."""
+    """Returns all 6 hardcoded listings sorted by match score descending."""
     results = []
     for listing in HARDCODED_LISTINGS:
         card = listing.copy()
@@ -489,3 +489,14 @@ def compute_results(session: dict[str, Any]) -> list[dict]:
         results.append(card)
     results.sort(key=lambda x: x["match_score"], reverse=True)
     return results
+
+
+def get_automation_results(runner) -> list[dict]:
+    """
+    Returns live listings collected by the automation runner.
+    Falls back to empty list if the runner has no results yet.
+    Caller is responsible for merging with hardcoded fallback cards.
+    """
+    if runner and getattr(runner, "results", None):
+        return list(runner.results)
+    return []

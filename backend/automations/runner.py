@@ -1,8 +1,7 @@
 """
 Automation Runner
-Launches 3 browser automations in parallel using asyncio.gather().
-Each script has a built-in stagger delay before browser.close() so they
-close one by one: MagicBricks first, NoBroker second, 99acres last.
+Launches 3 browser-use Cloud agents in parallel via asyncio.gather().
+Collects and flattens their results into self.results.
 """
 
 import asyncio
@@ -16,35 +15,45 @@ from automations.scripts.magicbricks import run_magicbricks
 
 class AutomationRunner:
     def __init__(self):
-        self.status = "idle"  # idle | running | complete | error
+        self.status = "idle"  # idle | running | complete
+        self.results: list[dict] = []
         self._tasks: list[asyncio.Task] = []
 
     def reset(self):
         self.status = "idle"
+        self.results = []
         self._tasks = []
 
     async def run_all(self, session: dict[str, Any]):
         """
-        Fires all 3 automations simultaneously via asyncio.gather().
-        Stagger close order (built into each script's final sleep):
-          MagicBricks → closes ~22s  (0s extra delay)
-          NoBroker    → closes ~28s  (2s extra delay)
-          99acres     → closes ~34s  (4s extra delay)
+        Fires all 3 browser-use agents simultaneously.
+        Each returns a list of property dicts; results are flattened and stored.
+        Status: idle → running → complete.
         """
         self.status = "running"
-        theater_log.append(
-            f"[AutomationRunner] All 3 browser windows opening simultaneously..."
-        )
+        self.results = []
+        theater_log.append("[AutomationRunner] All 3 browser agents launching simultaneously...")
+
         try:
-            await asyncio.gather(
+            gathered = await asyncio.gather(
                 run_99acres(session),
                 run_nobroker(session),
                 run_magicbricks(session),
+                return_exceptions=True,
             )
+
+            # Flatten results; skip any coroutines that raised exceptions
+            flat: list[dict] = []
+            for item in gathered:
+                if isinstance(item, list):
+                    flat.extend(item)
+
+            self.results = flat
             self.status = "complete"
             theater_log.append(
-                "[AutomationRunner] Theater complete. All windows closed."
+                f"[AutomationRunner] Theater complete. {len(flat)} live listings collected."
             )
+
         except Exception as e:
             print(f"[AutomationRunner] Error: {e}")
             self.status = "complete"  # still complete so frontend never hangs

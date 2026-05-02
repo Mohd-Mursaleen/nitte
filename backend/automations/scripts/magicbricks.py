@@ -1,97 +1,92 @@
 """
-MagicBricks Automation — Choreography Script
-Third platform — fast scan down (AI skimming), slow review back up.
-Total runtime: ~22–25 seconds. Closes first — no stagger delay.
+MagicBricks Automation — Browser Use Cloud SDK v3
+LLM agent navigates MagicBricks, searches for 2BHK listings in Koramangala,
+and returns structured results. Streams step-by-step logs to theater_log.
 """
 
-import asyncio
+import json
 import time
 from typing import Any
 
-from playwright.async_api import async_playwright
+from pydantic import BaseModel
 
 from automations.log_store import theater_log
-from automations.utils import CHROME_BINARY, get_chrome_profile
 
-SEARCH_URL = (
-    "https://www.magicbricks.com/property-for-rent/residential-real-estate"
-    "?bedroom=2&proptype=Multistorey-Apartment,Builder-Floor-Apartment"
-    "&cityName=Bangalore&localityName=Electronic-City"
+# Module-level cache — populated after each run
+magicbricks_results: list[dict] = []
+
+
+class PropertyListing(BaseModel):
+    title: str
+    price: str
+    location: str
+    source: str
+
+
+class PropertyListings(BaseModel):
+    listings: list[PropertyListing]
+
+
+TASK_PROMPT = (
+    "Go to https://www.magicbricks.com and search for 2 BHK flats for rent in "
+    "Koramangala, Bangalore. Browse at least 5 listings. Return top 3 as JSON with "
+    "keys: title, price, location, source (set to 'MagicBricks')."
 )
 
 
 def log(message: str):
-    """Prints a timestamped log entry and appends it to the shared theater log."""
+    """Timestamped log entry — printed to stdout and appended to shared theater log."""
     entry = f"[{time.strftime('%H:%M:%S')}] [MagicBricks] {message}"
     print(entry)
     theater_log.append(entry)
 
 
-async def run_magicbricks(session: dict[str, Any]):
+async def run_magicbricks(session: dict[str, Any]) -> list[dict]:
     """
-    Theater choreography for MagicBricks.
-    Fast scan down + slow review scroll back up.
-    Closes first — no stagger delay.
+    Launches a browser-use Cloud agent to search MagicBricks.
+    Streams live step logs. Returns list of up to 3 property dicts.
     """
-    chrome_profile = get_chrome_profile()
-    playwright_instance = await async_playwright().start()
-    browser = None
+    global magicbricks_results
+
+    from browser_use_sdk.v3 import AsyncBrowserUse  # noqa: PLC0415
+
+    client = AsyncBrowserUse()
+    log("Navigating to MagicBricks Koramangala filter...")
+
     try:
-        browser = await playwright_instance.chromium.launch_persistent_context(
-            user_data_dir=chrome_profile,
-            executable_path=CHROME_BINARY,
-            headless=False,
-            slow_mo=120,
-            args=[
-                "--start-maximized",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-            ],
-            no_viewport=True,
+        task = await client.tasks.create_task(
+            task=TASK_PROMPT,
+            schema=PropertyListings,
+            max_steps=12,
         )
 
-        page = await browser.new_page()
+        async for step in task.stream():
+            goal = getattr(step, "next_goal", None) or getattr(step, "summary", "")
+            url = getattr(step, "url", "")
+            if goal:
+                log(f"Step {step.number}: {goal}" + (f" — {url}" if url else ""))
 
-        # ── STEP 1: Land on results ──────────────────────────────────────────
-        log("Navigating to MagicBricks Electronic City filter...")
-        await page.goto(SEARCH_URL, wait_until="domcontentloaded")
-        await asyncio.sleep(3)
+        result = await task.complete()
 
-        # ── STEP 2: Fast scan down — AI skimming ─────────────────────────────
-        log("Page loaded. Applying 2BHK + rent filters...")
-        await asyncio.sleep(1)
-        log("Fast-scanning 134 listings for price anomalies...")
-        for i in range(7):
+        listings: list[dict] = []
+        if result.parsed_output and hasattr(result.parsed_output, "listings"):
+            listings = [item.model_dump() for item in result.parsed_output.listings]
+        elif result.output:
             try:
-                log(f"Scrolling rapidly... (analyzing)")
-                await page.evaluate("window.scrollBy(0, 450)")
-                await asyncio.sleep(0.6)
+                raw = result.output if isinstance(result.output, str) else json.dumps(result.output)
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    listings = parsed
+                elif isinstance(parsed, dict) and "listings" in parsed:
+                    listings = parsed["listings"]
             except Exception:
                 pass
 
-        await asyncio.sleep(1.5)
-
-        # ── STEP 3: Slow scroll back up — reviewing ───────────────────────────
-        log("Scroll complete. Reviewing top matches...")
-        for _ in range(4):
-            try:
-                await page.evaluate("window.scrollBy(0, -300)")
-                await asyncio.sleep(1.0)
-            except Exception:
-                pass
-
-        await asyncio.sleep(1)
-        log("Comparing MagicBricks data with previous platforms...")
-        await asyncio.sleep(2)
-        log("Analysis complete. Best value listing identified.")
-        await asyncio.sleep(1)
-
-        # ── STAGGER: MagicBricks closes first — no extra delay ───────────────
-        log("✓ MagicBricks analysis complete. Window closing.")
+        magicbricks_results = listings
+        log(f"✓ MagicBricks analysis complete. {len(listings)} listings found. Window closing.")
+        return listings
 
     except Exception as e:
         log(f"Error: {e}")
-    finally:
-        if browser:
-            await browser.close()
-        await playwright_instance.stop()
+        magicbricks_results = []
+        return []

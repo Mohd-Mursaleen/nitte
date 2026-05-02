@@ -2,8 +2,8 @@
 TrueNest AI — Backend Server
 FastAPI server that:
 1. Receives session data from Pipecat when conversation ends
-2. Triggers parallel browser automations (the theater)
-3. Serves hardcoded results with dynamic match scores
+2. Triggers parallel browser-use Cloud agents (the theater)
+3. Serves live scraped results merged with hardcoded fallback cards
 4. Exposes status and live log endpoints for the frontend to poll
 """
 
@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -21,7 +21,7 @@ load_dotenv()
 
 from automations.log_store import clear_logs, get_logs
 from automations.runner import AutomationRunner
-from results.engine import compute_results
+from results.engine import compute_results, get_automation_results
 from session.store import SessionStore
 
 # ── Shared state ────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ async def health():
 async def session_complete(data: SessionData):
     """
     Called by Pipecat bot when Nest says the final line.
-    Saves session data, clears old logs, and triggers all automations in parallel.
+    Saves session data, clears old logs, and triggers all agents in parallel.
     """
     session_store.save(data.model_dump())
     clear_logs()
@@ -102,7 +102,7 @@ async def theater_status():
 async def get_theater_logs():
     """
     Frontend polls this every 1 second to display live activity logs.
-    Returns all logs collected so far from all 3 browser automations.
+    Returns all logs collected so far from all 3 browser agents.
     """
     return {"logs": get_logs()}
 
@@ -110,14 +110,16 @@ async def get_theater_logs():
 @app.get("/results")
 async def get_results():
     """
-    Returns hardcoded property cards with dynamically computed match scores
-    based on session data collected from Nest.
+    Returns property cards with match scores.
+    Live scraped results (if any) appear first, followed by hardcoded fallback cards.
     """
-    session = session_store.get()
-    if not session:
-        session = {}
-    results = compute_results(session)
-    return {"results": results}
+    session = session_store.get() or {}
+    hardcoded = compute_results(session)
+    live = get_automation_results(automation_runner)
+
+    if live:
+        return {"results": live + hardcoded}
+    return {"results": hardcoded}
 
 
 @app.post("/theater/reset")
