@@ -158,7 +158,10 @@ function VoiceSessionView({
   useEffect(() => {
     if (!pcClient) return;
     pcClient
-      .startBotAndConnect({ endpoint: `${PIPECAT_URL}/start` })
+      .startBotAndConnect({
+          endpoint: `${PIPECAT_URL}/start`,
+          requestData: {},  // runner requires a parseable JSON body
+        })
       .catch((err: unknown) => {
         console.error("Pipecat connection failed:", err);
         onPageStateChange("select");
