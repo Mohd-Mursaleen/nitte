@@ -3,4 +3,3 @@ uvicorn
 starlette==0.38.6
 pydantic>=2.12.5
 python-dotenv
-browser-use==0.12.6
