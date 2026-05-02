@@ -8,9 +8,7 @@ import asyncio
 from typing import Any
 
 from automations.log_store import theater_log
-from automations.scripts.ninety_nine_acres import run_99acres
-from automations.scripts.nobroker import run_nobroker
-from automations.scripts.magicbricks import run_magicbricks
+from automations.scripts.theater import run_99acres, run_nobroker, run_magicbricks
 
 
 class AutomationRunner:
@@ -42,11 +40,13 @@ class AutomationRunner:
                 return_exceptions=True,
             )
 
-            # Flatten results; skip any coroutines that raised exceptions
+            # Flatten results; log any agent-level exceptions
             flat: list[dict] = []
             for item in gathered:
                 if isinstance(item, list):
                     flat.extend(item)
+                elif isinstance(item, Exception):
+                    print(f"[AutomationRunner] Agent failed: {item}")
 
             self.results = flat
             self.status = "complete"
