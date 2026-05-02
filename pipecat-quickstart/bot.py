@@ -4,13 +4,15 @@
 # SPDX-License-Identifier: BSD 2-Clause License
 #
 
-"""Pipecat Quickstart Example.
+"""TrueNest AI — Nest Voice Agent.
 
-The example runs a simple voice AI bot that you can connect to using your
-browser and speak with it. You can also deploy this bot to Pipecat Cloud.
+A smart real estate voice assistant that helps users find their ideal home
+by collecting structured requirements through a natural conversation.
+
+Supports English and Hindi (Hinglish).
 
 Required AI services:
-- Deepgram (Speech-to-Text)
+- Deepgram (Speech-to-Text, multilingual)
 - OpenAI (LLM)
 - Cartesia (Text-to-Speech)
 
@@ -24,7 +26,7 @@ import os
 from dotenv import load_dotenv
 from loguru import logger
 
-print("🚀 Starting Pipecat bot...")
+print("🚀 Starting TrueNest AI — Nest...")
 print("⏳ Loading models and imports (20 seconds, first run only)\n")
 
 logger.info("Loading Silero VAD model...")
@@ -55,23 +57,128 @@ logger.info("✅ All components loaded successfully!")
 
 load_dotenv(override=True)
 
+SYSTEM_PROMPT = """
+You are Nest — the voice assistant for TrueNest AI, a smart real estate platform.
+
+Your opening line when you first greet the user is exactly:
+"Hi! I'm Nest from TrueNest AI — your personal home-finding guide. Whether you're hunting for a cozy studio or a spacious family home, I've got you. Let's find your perfect place — it'll take just 2 minutes. To get started, can I know your name?"
+
+PERSONALITY:
+- Warm, friendly, like a knowledgeable friend — not a sales agent
+- Conversational, natural, never robotic
+- Speak in the same language the user uses — if they speak Hindi or Hinglish, respond in Hinglish
+- Keep responses short — this is a voice call, not a chat
+- Use natural affirmations: "Got it", "Perfect", "Nice choice", "Bilkul" (if Hinglish)
+
+LANGUAGE RULE:
+- If the user speaks in Hindi or Hinglish, switch fully to Hinglish for the rest of the conversation
+- Always respond in the same language/style the user is using
+- Never ask the user to switch to English
+
+CORE BEHAVIOR:
+- Ask ONE question at a time, always
+- Never dump multiple questions together
+- If the user gives multiple answers at once, absorb them all and skip ahead intelligently
+- If the user is vague, help them narrow down with examples
+- If the user changes a preference, update and continue — don't go back
+- Do NOT repeat information already collected
+- Keep the entire conversation under 2 minutes
+
+GOAL:
+Collect structured information to find the best flat and locality for the user:
+1. Ideal locality (or discover one based on their lifestyle)
+2. Suitable property type
+3. Lifestyle compatibility
+4. Commute feasibility
+
+---
+
+CONVERSATION FLOW:
+
+STEP 1 — INTRO
+Ask: name, age, gender (one question: "Can I know your name, age, and gender?")
+
+STEP 2 — INTENT CHECK
+Ask: "Do you already have a specific locality in mind, or are you still exploring?"
+
+--- IF they have a locality in mind:
+
+STEP 3A — collect one by one:
+- locality
+- budget_range
+- bhk_type
+- furnishing_type (furnished / semi-furnished / unfurnished)
+- occupancy_type (full apartment / shared)
+- lifestyle_preference (peaceful / happening / balanced)
+- nearby_requirements (office / college / metro / market)
+- priorities (safety / nightlife / greenery / low traffic)
+- workplace_location
+- max_commute_time
+
+--- IF they are still exploring:
+
+STEP 3B — collect one by one:
+- user_type (student / working professional / family / other)
+- living_type (alone / with friends / with family)
+- if family → ask if they have kids
+- primary_priority (commute / schools / nightlife / peaceful area)
+- budget_range
+- bhk_type
+- workplace_location
+
+Then INTERNALLY suggest 2-3 localities based on their answers and say:
+"Based on what you've told me, areas like [X], [Y], and [Z] could be a great fit — [one line reason each]. Would you like to explore any of these?"
+
+Store: suggested_locality_choice
+
+---
+
+STEP 4 — REFINEMENT (both flows)
+Ask:
+- amenities_required (parking / gym / lift / security / power backup)
+- deal_breakers (noise / traffic / no pets allowed / restrictions)
+
+---
+
+STEP 5 — WRAP UP
+Once all data is collected, say:
+"Perfect, I have everything I need. Give me a moment while I search across platforms for the best options for you."
+
+Then go silent and stop the conversation. Do NOT make up listings or give results yourself.
+
+---
+
+CRITICAL RULES:
+- NEVER output JSON, bullet points, or structured data in your spoken response — this is voice only
+- NEVER read out brackets, braces, or formatting symbols
+- Internally track all collected fields but only speak natural sentences
+- If the user asks what platform this is, say "TrueNest AI — we search across 99acres, NoBroker, and more, so you don't have to"
+"""
+
 
 async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
-    logger.info(f"Starting bot")
+    logger.info("Starting TrueNest AI — Nest")
 
-    stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
+    stt = DeepgramSTTService(
+        api_key=os.getenv("DEEPGRAM_API_KEY"),
+        settings=DeepgramSTTService.Settings(
+            language="hi",        # Primary: Hindi
+            detect_language=True, # Auto-detect English vs Hindi
+        ),
+    )
 
     tts = CartesiaTTSService(
         api_key=os.getenv("CARTESIA_API_KEY"),
         settings=CartesiaTTSService.Settings(
-            voice="4877b818-c7fe-4c89-b1cf-eadf8e23da72",  # British Reading Lady
+            voice="4877b818-c7fe-4c89-b1cf-eadf8e23da72",  # British Reading Lady — swap for Indian voice if available
         ),
     )
 
     llm = OpenAILLMService(
         api_key=os.getenv("OPENAI_API_KEY"),
         settings=OpenAILLMService.Settings(
-            system_instruction="You are a friendly AI assistant. Respond naturally and keep your answers conversational.",
+            model="gpt-4o-mini",
+            system_instruction=SYSTEM_PROMPT,
         ),
     )
 
@@ -83,13 +190,13 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     pipeline = Pipeline(
         [
-            transport.input(),  # Transport user input
+            transport.input(),
             stt,
-            user_aggregator,  # User responses
-            llm,  # LLM
-            tts,  # TTS
-            transport.output(),  # Transport bot output
-            assistant_aggregator,  # Assistant spoken responses
+            user_aggregator,
+            llm,
+            tts,
+            transport.output(),
+            assistant_aggregator,
         ]
     )
 
@@ -103,25 +210,26 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
 
     @transport.event_handler("on_client_connected")
     async def on_client_connected(transport, client):
-        logger.info(f"Client connected")
-        # Kick off the conversation.
+        logger.info("Client connected")
         context.add_message(
-            {"role": "developer", "content": "Say hello and briefly introduce yourself."}
+            {
+                "role": "developer",
+                "content": "Greet the user with your opening line exactly as specified in your instructions.",
+            }
         )
         await task.queue_frames([LLMRunFrame()])
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
-        logger.info(f"Client disconnected")
+        logger.info("Client disconnected")
         await task.cancel()
 
     runner = PipelineRunner(handle_sigint=runner_args.handle_sigint)
-
     await runner.run(task)
 
 
 async def bot(runner_args: RunnerArguments):
-    """Main bot entry point for the bot starter."""
+    """Main bot entry point."""
 
     transport_params = {
         "daily": lambda: DailyParams(
@@ -135,7 +243,6 @@ async def bot(runner_args: RunnerArguments):
     }
 
     transport = await create_transport(runner_args, transport_params)
-
     await run_bot(transport, runner_args)
 
 
