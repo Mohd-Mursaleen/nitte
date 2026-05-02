@@ -1,3 +1,4 @@
+"use client";
 import dynamic from "next/dynamic";
 
 // No SSR — SmallWebRTCTransport uses RTCPeerConnection and other browser-only APIs
