@@ -311,13 +311,12 @@ export default function Home() {
           initial={shouldReduceMotion ? undefined : { opacity: 0, y: 24 }}
           animate={
             shouldReduceMotion
-              ? undefined
-              : {
-                  opacity: 1,
-                  y: 0,
-                  rotateX: cardFloat.rotateX,
-                  rotateY: cardFloat.rotateY,
-                  scale: cardFloat.scale,
+                ? undefined
+                : {
+                    opacity: 1,
+                    rotateX: cardFloat.rotateX,
+                    rotateY: cardFloat.rotateY,
+                    scale: cardFloat.scale,
                   x: cardFloat.depthX * 0.12,
                   y: cardFloat.depthY * 0.12,
                 }
