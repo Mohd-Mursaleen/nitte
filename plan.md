@@ -1,4 +1,4 @@
-# TrueNest AI — Product Brief & Hackathon Showcase
+# Ghosla — Product Brief & Hackathon Showcase
 
 **Builder:** Mohd Mursaleen  
 **Stack:** Voice AI · Browser Automation · FastAPI · Next.js  
