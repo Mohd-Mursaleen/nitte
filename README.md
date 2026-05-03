@@ -1,6 +1,6 @@
 <div align="center">
 
-# Ghosla
+# Ghosla 🪹
 
 ### *Your next home is one smart conversation away.*
 
