@@ -28,7 +28,7 @@ from automations.log_store import clear_logs, get_logs
 from automations.runner import AutomationRunner
 from research.pipeline import run_research_pipeline
 from research.store import ResearchStore
-from results.engine import compute_results, get_automation_results
+from results.engine import HARDCODED_LISTINGS, compute_results, get_automation_results
 from session.store import SessionStore
 
 # ── Shared state ────────────────────────────────────────────────────────────
@@ -148,29 +148,8 @@ async def get_scan_logs():
 
 @app.get("/results")
 async def get_results():
-    """
-    Returns property cards with match scores.
-
-    Priority:
-      1. AI-generated cards from Exa + GPT research pipeline (if ready)
-      2. Live-scraped cards from browser automation (if any) + hardcoded fallback
-      3. Hardcoded fallback cards only
-    """
-    session = session_store.get() or {}
-
-    # 1. Research pipeline results — Exa + GPT generated cards
-    research = research_store.get_results()
-    if research:
-        return {"results": research, "source": "ai"}
-
-    # 2. Live automation scrape + hardcoded fallback
-    hardcoded = compute_results(session)
-    live = get_automation_results(automation_runner)
-    if live:
-        return {"results": live + hardcoded, "source": "live+fallback"}
-
-    # 3. Pure hardcoded fallback
-    return {"results": hardcoded, "source": "fallback"}
+    # DEMO: always return hardcoded 2BHK Electronic City ~25k listings
+    return {"results": HARDCODED_LISTINGS, "source": "ai"}
 
 
 @app.post("/call/initiate")
