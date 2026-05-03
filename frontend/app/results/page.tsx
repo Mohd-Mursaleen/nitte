@@ -25,6 +25,8 @@ const FALLBACK_LISTING_IMAGES = [
   "/fallback/2bhk4.png",
   "/fallback/2bhk5.png",
   "/fallback/2bhk6.png",
+  "/fallback/2bhk1.png",
+  "/fallback/2bhk2.png",
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -537,13 +539,7 @@ function ListingCard({
   const platformColor = PLATFORM_COLORS[listing.platform] ?? "#6b635a";
   const platformLogo = PLATFORM_LOGOS[listing.platform];
   const intel = normalizeLocalityIntel(listing.locality_intel);
-  const [primaryImageFailed, setPrimaryImageFailed] = useState(false);
-  const [fallbackImageFailed, setFallbackImageFailed] = useState(false);
-  const primaryImage = listing.image_url?.trim();
-  const fallbackImage = FALLBACK_LISTING_IMAGES[index % FALLBACK_LISTING_IMAGES.length];
-  const imageSrc = !primaryImageFailed && primaryImage
-    ? primaryImage
-    : (!fallbackImageFailed ? fallbackImage : undefined);
+  const imageSrc = FALLBACK_LISTING_IMAGES[index % FALLBACK_LISTING_IMAGES.length];
 
   const imagePlaceholderStyle: React.CSSProperties = {
     background: `linear-gradient(135deg, ${platformColor}22 0%, ${platformColor}10 100%)`,
@@ -563,25 +559,12 @@ function ListingCard({
     >
       {/* Hero image */}
       <div className="relative overflow-hidden" style={{ height: 200 }}>
-        {imageSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageSrc}
-            alt={listing.title}
-            className="w-full h-full object-cover"
-            onError={() => {
-              if (imageSrc === primaryImage) {
-                setPrimaryImageFailed(true);
-              } else {
-                setFallbackImageFailed(true);
-              }
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center" style={imagePlaceholderStyle}>
-            <HomeIcon color={`${platformColor}55`} size={52} />
-          </div>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageSrc}
+          alt={listing.title}
+          className="w-full h-full object-cover"
+        />
 
         {/* Gradient overlay */}
         <div
