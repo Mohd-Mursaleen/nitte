@@ -1,5 +1,5 @@
 """
-Theater automation scripts — one coroutine per property site.
+Platform scan scripts — one coroutine per property site.
 
 Uses browser-use Agent (headless=False) + ChatOpenAI gpt-5.4-2026-03-05.
 Each site opens in a 1/3-screen window at a fixed position so all 3
@@ -63,18 +63,6 @@ def _extract(session: dict[str, Any]) -> tuple[str, str, str]:
 
 
 def _build_task(site_url: str, bhk: str, locality: str, budget: str) -> str:
-    """
-    Build a natural language task string for the agent.
-
-    Args:
-        site_url: Root URL of the property site.
-        bhk: BHK type, e.g. "2 BHK".
-        locality: Target locality, e.g. "Electronic City".
-        budget: Budget range string. May be empty.
-
-    Returns:
-        Full instruction string for the browser-use Agent.
-    """
     task = (
         f"Go to {site_url}. "
         f"Search for {bhk} flat for rent in {locality}, Bangalore."
@@ -104,14 +92,6 @@ def _make_step_callback(site_name: str):
 
 
 async def _run_site(site_name: str, task: str, max_steps: int = 25) -> None:
-    """
-    Open a 1/3-screen browser window at the correct position and run the agent.
-
-    Args:
-        site_name: Label used in logs and to look up window position.
-        task: Full natural language instruction for the agent.
-        max_steps: Hard cap on agent steps to control cost.
-    """
     llm = ChatOpenAI(model="gpt-5.4-2026-03-05")
 
     x, y = _WINDOW_POSITIONS[site_name]
@@ -150,36 +130,18 @@ async def _run_site(site_name: str, task: str, max_steps: int = 25) -> None:
 # ── Site runners ─────────────────────────────────────────────────────────────
 
 async def run_nobroker(session: dict[str, Any]) -> None:
-    """
-    Run browser-use agent on NoBroker with session-aware search task.
-
-    Args:
-        session: Voice session data collected by Nest.
-    """
     bhk, locality, budget = _extract(session)
     task = _build_task("https://www.nobroker.in", bhk, locality, budget)
     await _run_site("NoBroker", task)
 
 
 async def run_99acres(session: dict[str, Any]) -> None:
-    """
-    Run browser-use agent on 99acres with session-aware search task.
-
-    Args:
-        session: Voice session data collected by Nest.
-    """
     bhk, locality, budget = _extract(session)
     task = _build_task("https://www.99acres.com", bhk, locality, budget)
     await _run_site("99Acres", task)
 
 
 async def run_magicbricks(session: dict[str, Any]) -> None:
-    """
-    Run browser-use agent on MagicBricks with session-aware search task.
-
-    Args:
-        session: Voice session data collected by Nest.
-    """
     bhk, locality, budget = _extract(session)
     task = _build_task("https://www.magicbricks.com", bhk, locality, budget)
     await _run_site("MagicBricks", task)

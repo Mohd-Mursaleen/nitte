@@ -36,7 +36,7 @@ No test suite configured.
 1. **select** — choose Voice Agent vs Chatbot (chatbot is disabled/coming-soon)
 2. **connecting** — `PipecatClient.startBotAndConnect()` call in flight to `PIPECAT_URL` (`localhost:7860`)
 3. **conversation** — live WebRTC session; transcript shown; transitions to analyzing when bot says `"give me a moment"` or user clicks "End conversation"
-4. **analyzing** — POSTs to `BACKEND_URL/session/complete`, polls `/theater/status` every 2 s and `/theater/logs` every 1.5 s, redirects to `/results` on `status === "complete"`
+4. **analyzing** — POSTs to `BACKEND_URL/session/complete`, polls `/scan/status` every 3 s and `/scan/logs` every 1.5 s, redirects to `/results` on `status === "complete"`
 
 ### External services
 
@@ -47,8 +47,8 @@ No test suite configured.
 
 Backend endpoints used:
 - `POST /session/complete` — triggers scraping pipeline
-- `GET /theater/status` → `{ status: "complete" | ... }`
-- `GET /theater/logs` → `{ logs: string[] }`
+- `GET /scan/status` → `{ status: "complete" | ... }`
+- `GET /scan/logs` → `{ logs: string[] }`
 - `GET /results` → `{ results: Listing[] }` (also accepts `listings` key)
 
 ### Tooling

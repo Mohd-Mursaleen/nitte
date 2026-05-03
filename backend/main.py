@@ -2,7 +2,7 @@
 TrueNest AI — Backend Server
 FastAPI server that:
 1. Receives session data from Pipecat when conversation ends
-2. Triggers parallel browser-use Cloud agents (the theater)
+2. Triggers parallel browser-use Cloud agents (platform scan)
 3. Serves live scraped results merged with hardcoded fallback cards
 4. Exposes status and live log endpoints for the frontend to poll
 """
@@ -87,13 +87,13 @@ def _fallback_call_status() -> str:
         return "idle"
 
     research_status = getattr(research_store, "status", "idle")
-    theater_status = getattr(automation_runner, "status", "idle")
+    scan_status = getattr(automation_runner, "status", "idle")
 
-    if research_status == "complete" or theater_status == "complete":
+    if research_status == "complete" or scan_status == "complete":
         return "complete"
     if research_status == "error":
         return "failed"
-    if research_status == "running" or theater_status == "running":
+    if research_status == "running" or scan_status == "running":
         return "processing"
     if session_store.get():
         return "processing"
@@ -115,9 +115,9 @@ async def session_complete(data: SessionData):
     """
     Called by Pipecat bot when Nest says the final line.
     Saves session data, clears old logs, and triggers:
-      - Browser theater (3 parallel Playwright windows)
+      - Platform scan (3 parallel browser windows: NoBroker, 99acres, MagicBricks)
       - Exa + GPT research pipeline (property listings + locality → AI-generated cards)
-    Both run as background tasks; /theater/status and /results are polled by frontend.
+    Both run as background tasks; /scan/status and /results are polled by frontend.
     """
     session_dict = data.model_dump()
     session_store.save(session_dict)
@@ -128,17 +128,17 @@ async def session_complete(data: SessionData):
     return {"status": "started"}
 
 
-@app.get("/theater/status")
-async def theater_status():
+@app.get("/scan/status")
+async def scan_status():
     """
-    Frontend polls this to know when the theater is done.
+    Frontend polls this to know when the platform scan is done.
     Returns: idle | running | complete
     """
     return {"status": automation_runner.status}
 
 
-@app.get("/theater/logs")
-async def get_theater_logs():
+@app.get("/scan/logs")
+async def get_scan_logs():
     """
     Frontend polls this every 1 second to display live activity logs.
     Returns all logs collected so far from all 3 browser agents.
@@ -233,8 +233,8 @@ async def call_status():
         )
 
 
-@app.post("/theater/reset")
-async def reset_theater():
+@app.post("/scan/reset")
+async def reset_scan():
     """Dev endpoint — reset automation state and research pipeline for re-running."""
     automation_runner.reset()
     session_store.clear()

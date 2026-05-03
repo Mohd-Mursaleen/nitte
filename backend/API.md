@@ -23,12 +23,12 @@ POST /session/complete
         │  t=10s  MagicBricks opens                    │  Exa deep search #2
         │  t=120s hard timeout, all close              │    → locality intel
         │                                              │         │
-        │  [frontend polls /theater/status]            │         ▼
+        │  [frontend polls /scan/status]            │         ▼
         │                                              │  GPT generates 6 cards
         │                                              │  (structured JSON)
         │                                              │         │
         ▼                                              │         ▼
-GET /theater/status → "complete"                      │  stored in ResearchStore
+GET /scan/status → "complete"                      │  stored in ResearchStore
                                                       │
                                                       ▼
                                              GET /results → source: "ai"
@@ -42,7 +42,7 @@ GET /theater/status → "complete"                      │  stored in ResearchS
 | 2nd | Live browser scrape + fallback cards | `"live+fallback"` |
 | 3rd | Fallback cards only | `"fallback"` |
 
-The frontend should always call `/results` after `/theater/status` is `complete`. If `source === "ai"`, the results are fully AI-generated from real web research. If `source === "fallback"`, the research pipeline failed — use these as demo data only.
+The frontend should always call `/results` after `/scan/status` is `complete`. If `source === "ai"`, the results are fully AI-generated from real web research. If `source === "fallback"`, the research pipeline failed — use these as demo data only.
 
 ---
 
@@ -99,9 +99,9 @@ Saves session data and fires both pipelines (theater + research) as background t
 
 ---
 
-### `GET /theater/status`
+### `GET /scan/status`
 
-Poll every 3–5 seconds to track the browser theater.
+Poll every 3–5 seconds to track the platform scan.
 
 **Response**
 ```json
@@ -118,7 +118,7 @@ Poll every 3–5 seconds to track the browser theater.
 
 ---
 
-### `GET /theater/logs`
+### `GET /scan/logs`
 
 Live log lines from all browser agents. Poll every 1–2 seconds.
 
@@ -409,11 +409,11 @@ await fetch('http://localhost:8000/session/complete', {
   body: JSON.stringify(session)
 })
 
-// 2. Poll theater status (for visual browser theater indicator)
-const theaterPoll = setInterval(async () => {
-  const { status } = await fetch('/theater/status').then(r => r.json())
+// 2. Poll theater status (for visual platform scan indicator)
+const scanPoll = setInterval(async () => {
+  const { status } = await fetch('/scan/status').then(r => r.json())
   updateTheaterUI(status) // idle | running | complete
-  if (status === 'complete') clearInterval(theaterPoll)
+  if (status === 'complete') clearInterval(scanPoll)
 }, 3000)
 
 // 3. Poll for AI results independently — research pipeline may finish before theater
@@ -429,7 +429,7 @@ const resultsPoll = setInterval(async () => {
 
 // 4. Show live logs while waiting
 const logsPoll = setInterval(async () => {
-  const { logs } = await fetch('/theater/logs').then(r => r.json())
+  const { logs } = await fetch('/scan/logs').then(r => r.json())
   renderLogs(logs) // color-code by prefix
 }, 1500)
 
@@ -465,8 +465,8 @@ function renderCard(card) {
 
 | What | Endpoint | Interval | Stop condition |
 |------|----------|----------|---------------|
-| Theater visual | `/theater/status` | 3s | `status === "complete"` |
-| Live logs | `/theater/logs` | 1.5s | User closes theater view |
+| Scan visual | `/scan/status` | 3s | `status === "complete"` |
+| Live logs | `/scan/logs` | 1.5s | User closes theater view |
 | AI results | `/results` | 4s | `source === "ai"` |
 
 The research pipeline (Exa + GPT) typically completes in **30–90 seconds**. The theater browser automation runs up to **120 seconds**. Poll them independently.
@@ -482,7 +482,7 @@ Allowed origins: `http://localhost:3000`, `http://localhost:7860`
 ## Dev — Reset Between Test Runs
 
 ```bash
-curl -X POST http://localhost:8000/theater/reset
+curl -X POST http://localhost:8000/scan/reset
 ```
 
 Clears all state: session, research results, theater status, logs.

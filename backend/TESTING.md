@@ -55,7 +55,7 @@ Expected: `{"status":"started"}`
 
 ### Poll theater status
 ```bash
-curl http://localhost:8000/theater/status
+curl http://localhost:8000/scan/status
 ```
 Expected: `{"status":"idle"}` / `{"status":"running"}` / `{"status":"complete"}`
 
@@ -67,7 +67,7 @@ Expected: `{"results":[...3 cards with match_score...]}` — scores sorted desce
 
 ### Reset theater (dev)
 ```bash
-curl -X POST http://localhost:8000/theater/reset
+curl -X POST http://localhost:8000/scan/reset
 ```
 Expected: `{"status":"reset"}` — clears session, sets status back to `idle`.
 

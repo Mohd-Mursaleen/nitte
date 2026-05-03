@@ -13,7 +13,7 @@ async def main():
         print("Polling status every 5s...")
         for _ in range(20):
             await asyncio.sleep(5)
-            s = await client.get(f"{BASE}/theater/status")
+            s = await client.get(f"{BASE}/scan/status")
             status = s.json()["status"]
             print(f"  Status: {status}")
             if status == "complete":

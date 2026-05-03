@@ -23,7 +23,7 @@ def _loud(msg: str):
 
 log_store.append_log = _loud
 
-from automations.scripts.theater import run_nobroker, run_99acres, run_magicbricks
+from automations.scripts.platform_scan import run_nobroker, run_99acres, run_magicbricks
 
 SESSION = {
     "bhk_type": "2 BHK",

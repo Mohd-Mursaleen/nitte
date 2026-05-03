@@ -32,8 +32,8 @@ Pipecat bot  →  POST /session/complete  →  SessionStore.save()
                                         →  AutomationRunner.run_all() (background task)
                                                asyncio.gather(99acres, nobroker, magicbricks)
 
-Frontend     →  GET /theater/status  (polls: idle → running → complete)
-             →  GET /results         →  compute_results(session) → sorted cards
+Frontend     →  GET /scan/status  (polls: idle → running → complete)
+             →  GET /results      →  compute_results(session) → sorted cards
 ```
 
 ### Key design decisions

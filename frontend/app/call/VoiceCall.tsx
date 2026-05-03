@@ -844,10 +844,10 @@ function AnalyzingView({
       } catch {}
     }, 4000);
 
-    // Theater status fallback
+    // Scan status fallback
     const statusInterval = setInterval(async () => {
       try {
-        const { status } = (await fetch(`${BACKEND_URL}/theater/status`).then(
+        const { status } = (await fetch(`${BACKEND_URL}/scan/status`).then(
           (r) => r.json(),
         )) as { status: string };
         if (status === "complete" && !doneRef.current) {
@@ -862,7 +862,7 @@ function AnalyzingView({
     const logInterval = setInterval(async () => {
       try {
         const { logs: incoming } = (await fetch(
-          `${BACKEND_URL}/theater/logs`,
+          `${BACKEND_URL}/scan/logs`,
         ).then((r) => r.json())) as { logs: string[] };
         if (Array.isArray(incoming)) setLogs(incoming);
       } catch {}

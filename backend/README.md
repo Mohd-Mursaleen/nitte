@@ -1,6 +1,6 @@
 # TrueNest AI — Backend
 
-FastAPI server that powers the automation theater and serves results.
+FastAPI server that powers the platform scan and serves results.
 
 ## Architecture
 
@@ -26,9 +26,9 @@ backend/
 |--------|----------|-------------|
 | GET | `/health` | Server health check |
 | POST | `/session/complete` | Pipecat calls this when Nest finishes |
-| GET | `/theater/status` | Frontend polls: `idle / running / complete` |
+| GET | `/scan/status` | Frontend polls: `idle / running / complete` |
 | GET | `/results` | Returns 3 cards with match scores |
-| POST | `/theater/reset` | Dev reset endpoint |
+| POST | `/scan/reset` | Dev reset endpoint |
 
 ## Setup
 
@@ -71,6 +71,6 @@ Match scores auto-adjust based on what the user told Nest.
 1. User talks to Nest on frontend (`localhost:3000`)
 2. Nest finishes → bot.py calls `POST /session/complete`
 3. Backend triggers 3 browser windows in parallel (visible on screen)
-4. Frontend polls `GET /theater/status` until `complete`
+4. Frontend polls `GET /scan/status` until `complete`
 5. Frontend navigates to `/results`, fetches `GET /results`
 6. 3 property cards shown with match scores

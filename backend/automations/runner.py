@@ -2,10 +2,10 @@ import asyncio
 from typing import Any
 
 from automations.log_store import append_log
-from automations.scripts.theater import run_nobroker, run_99acres, run_magicbricks
+from automations.scripts.platform_scan import run_nobroker, run_99acres, run_magicbricks
 
-THEATER_TIMEOUT = 60  # hard cap — all browsers force-close after this many seconds
-STAGGER_DELAY = 5     # seconds between each window opening
+SCAN_TIMEOUT = 60   # hard cap — all browsers force-close after this many seconds
+STAGGER_DELAY = 5   # seconds between each window opening
 
 
 class AutomationRunner:
@@ -20,7 +20,7 @@ class AutomationRunner:
     async def run_all(self, session: dict[str, Any]) -> None:
         """
         Open 3 browser windows in staggered sequence, run agents in parallel,
-        then force-close everything after THEATER_TIMEOUT seconds.
+        then force-close everything after SCAN_TIMEOUT seconds.
 
         Sequence:
           t=0s  → NoBroker opens
@@ -32,7 +32,7 @@ class AutomationRunner:
             session: Voice session data from Nest.
         """
         self.status = "running"
-        append_log("[Runner] Theater started")
+        append_log("[Runner] Platform scan started")
 
         async def staggered():
             append_log("[Runner] Opening NoBroker...")
@@ -55,15 +55,14 @@ class AutomationRunner:
             )
 
         try:
-            # Hard 60-second ceiling — cancel everything if agents run long
-            await asyncio.wait_for(staggered(), timeout=THEATER_TIMEOUT)
+            await asyncio.wait_for(staggered(), timeout=SCAN_TIMEOUT)
         except asyncio.TimeoutError:
             append_log("[Runner] 60s timeout reached — closing all browsers")
         except Exception as e:
             append_log(f"[Runner] Unexpected error: {e}")
         finally:
             self.status = "complete"
-            append_log("[Runner] Theater complete")
+            append_log("[Runner] Platform scan complete")
 
     async def shutdown(self) -> None:
         pass

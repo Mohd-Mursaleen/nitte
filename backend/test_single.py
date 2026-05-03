@@ -4,7 +4,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from automations.scripts.theater import run_nobroker
+from automations.scripts.platform_scan import run_nobroker
 
 
 async def main():

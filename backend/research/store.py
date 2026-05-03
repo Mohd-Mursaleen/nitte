@@ -26,6 +26,6 @@ class ResearchStore:
         return self._results
 
     def clear(self) -> None:
-        """Reset store — called on /theater/reset."""
+        """Reset store — called on /scan/reset."""
         self._results = None
         self.status = "idle"
